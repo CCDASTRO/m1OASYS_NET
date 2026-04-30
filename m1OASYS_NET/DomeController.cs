@@ -1,12 +1,13 @@
-﻿using System;
-using System.Net.Sockets;
-using System.Text;
-using System.Timers;
-using Timer = System.Timers.Timer;
-
-using ASCOM;
+﻿using ASCOM;
 using ASCOM.DeviceInterface;
 using ASCOM.Utilities;
+using System;
+using System.IO;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
+using System.Timers;
+using Timer = System.Timers.Timer;
 
 namespace m1OASYS_NET
 {
@@ -40,36 +41,58 @@ namespace m1OASYS_NET
         public void Connect(string ip, int port, bool scopeSafeEnable)
         {
             scopeSafeEnabled = scopeSafeEnable;
-
             client = new TcpClient();
             client.ReceiveTimeout = 2000;
             client.SendTimeout = 2000;
-
             client.Connect(ip, port);
             stream = client.GetStream();
             stream.ReadTimeout = 2000;
 
-            connected = true;
-            pollTimer.Start();
+            string response = SendCommandWithRetry("vn", 5);
+            if (response != null && (response.Contains("D6Z") || response.Contains("XK") || response.Contains("XX")))
+            {
+                connected = true;
+                pollTimer.Start();
+                log.LogMessage("Connect", "Connected successfully.");
+                return;
+            }
+
+            Disconnect();
+            throw new Exception($"Connection failed. Response: '{response}'");
         }
 
         public void Disconnect()
         {
             pollTimer?.Stop();
-
             try { stream?.Close(); } catch { }
             try { client?.Close(); } catch { }
-
             connected = false;
         }
 
-        private void Send(string cmd)
+        private string SendCommandWithRetry(string cmd, int maxAttempts)
         {
-            if (client == null || !client.Connected)
-                return;
+            string command = Crc32.CalculateCRC(cmd);
+            byte[] data = Encoding.ASCII.GetBytes(command);
 
-            byte[] data = Encoding.ASCII.GetBytes(cmd + "\r\n");
-            stream.Write(data, 0, data.Length);
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    stream.Write(data, 0, data.Length);
+                    Thread.Sleep(100); // Brief pause for device processing
+
+                    byte[] buffer = new byte[256];
+                    int len = stream.Read(buffer, 0, buffer.Length);
+                    return Encoding.ASCII.GetString(buffer, 0, len);
+                }
+                catch (Exception ex)
+                {
+                    log.LogMessage("SendCommand", $"Attempt {attempt} failed: {ex.Message}");
+                    if (attempt < maxAttempts)
+                        Thread.Sleep(200 * (int)Math.Pow(2, attempt)); // Exponential backoff
+                }
+            }
+            return null;
         }
 
         private void Poll(object sender, ElapsedEventArgs e)
@@ -81,23 +104,19 @@ namespace m1OASYS_NET
             {
                 lock (lockObj)
                 {
-                    Send("xx00100");
+                    string response = SendCommandWithRetry("xx00100", 3);
+                    if (response == null) return;
 
-                    byte[] buffer = new byte[256];
-                    int len = stream.Read(buffer, 0, buffer.Length);
-
-                    string resp = Encoding.ASCII.GetString(buffer, 0, len);
-
-                    scopeSafe = resp.Contains("Secure");
+                    scopeSafe = response.Contains("Secure");
 
                     if (moving)
                     {
-                        if (resp.Contains("open"))
+                        if (response.Contains("open"))
                         {
                             shutterState = ShutterState.shutterOpen;
                             moving = false;
                         }
-                        else if (resp.Contains("closed"))
+                        else if (response.Contains("closed"))
                         {
                             shutterState = ShutterState.shutterClosed;
                             moving = false;
@@ -115,7 +134,7 @@ namespace m1OASYS_NET
         {
             moving = true;
             shutterState = ShutterState.shutterOpening;
-            Send("tn00100");
+            SendCommandWithRetry("tn00100", 3);
         }
 
         public void CloseShutter()
@@ -125,14 +144,14 @@ namespace m1OASYS_NET
 
             moving = true;
             shutterState = ShutterState.shutterClosing;
-            Send("tn00200");
+            SendCommandWithRetry("tn00200", 3);
         }
 
         public void Abort()
         {
             moving = false;
             shutterState = ShutterState.shutterError;
-            Send("tn00300");
+            SendCommandWithRetry("tn00300", 3);
         }
 
         public bool IsConnected => connected;
