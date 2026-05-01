@@ -70,7 +70,7 @@ namespace m1OASYS_NET
                     int port = int.Parse(p.GetValue(ID, "Port", "", "0"));
                     bool safe = bool.Parse(p.GetValue(ID, "ScopeSafeEnabled", "", "False"));
 
-                    dome.Connect(ip, port, safe);
+                    dome.Connect(ip, port);
                     connected = true;
                 }
                 else
@@ -99,7 +99,7 @@ namespace m1OASYS_NET
         public string Name => "m1OASYS Dome";
         public string Description => "TCP Dome Driver";
         public string DriverInfo => "m1OASYS ASCOM Dome Driver";
-        public string DriverVersion => "1.1.1";
+        public string DriverVersion => "1.1.2";
         public short InterfaceVersion => 2;
 
         // ---------------- CAPABILITIES ----------------

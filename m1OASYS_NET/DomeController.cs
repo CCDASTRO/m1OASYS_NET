@@ -22,8 +22,7 @@ namespace m1OASYS_NET
         private readonly object stateLock = new object();
 
         private bool connected;
-        private bool scopeSafe;
-        private bool scopeSafeEnabled;
+        
 
         private ShutterState shutterState = ShutterState.shutterError;
 
@@ -40,16 +39,35 @@ namespace m1OASYS_NET
 
         public DomeController()
         {
-            log = new TraceLogger("", "DomeController") { Enabled = true };
+            bool enableLogging = false;
+
+            try
+            {
+                Profile p = new Profile();
+                p.DeviceType = "Dome";
+
+                bool.TryParse(
+                    p.GetValue("ASCOM.m1OASYS_NET.Dome", "EnableLogging", "", "False"),
+                    out enableLogging);
+            }
+            catch
+            {
+                enableLogging = false; // fail safe OFF
+            }
+
+            log = new TraceLogger("", "DomeController")
+            {
+                Enabled = enableLogging
+            };
         }
 
         // =====================================================
         // CONNECT
         // =====================================================
 
-        public void Connect(string ip, int port, bool scopeSafeEnable)
+        public void Connect(string ip, int port)
         {
-            scopeSafeEnabled = scopeSafeEnable;
+            
 
             client = new TcpClient
             {
@@ -209,8 +227,7 @@ namespace m1OASYS_NET
             {
                 lastRealTelemetry = DateTime.Now;
 
-                if (msg.Contains("Secure"))
-                    scopeSafe = true;
+                
 
                 // =====================================================
                 // OPEN
