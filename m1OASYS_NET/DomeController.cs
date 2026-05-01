@@ -79,7 +79,7 @@ namespace m1OASYS_NET
                 try
                 {
                     stream.Write(data, 0, data.Length);
-                    Thread.Sleep(100); // Brief pause for device processing
+                    Thread.Sleep(300); // Brief pause for device processing
 
                     byte[] buffer = new byte[256];
                     int len = stream.Read(buffer, 0, buffer.Length);
@@ -89,7 +89,7 @@ namespace m1OASYS_NET
                 {
                     log.LogMessage("SendCommand", $"Attempt {attempt} failed: {ex.Message}");
                     if (attempt < maxAttempts)
-                        Thread.Sleep(200 * (int)Math.Pow(2, attempt)); // Exponential backoff
+                        Thread.Sleep(100 * (int)Math.Pow(2, attempt)); // Exponential backoff
                 }
             }
             return null;
