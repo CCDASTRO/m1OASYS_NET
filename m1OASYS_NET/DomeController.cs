@@ -2,12 +2,9 @@
 using ASCOM.DeviceInterface;
 using ASCOM.Utilities;
 using System;
-using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Timers;
-using Timer = System.Timers.Timer;
 
 namespace m1OASYS_NET
 {
@@ -15,212 +12,310 @@ namespace m1OASYS_NET
     {
         private TcpClient client;
         private NetworkStream stream;
-        private Timer pollTimer;
-        private Thread readThread;
-        private volatile bool isRunning = false;
+
+        private Thread rxThread;
+        private Thread verifyThread;
+
+        private volatile bool running;
+
+        private readonly object ioLock = new object();
+        private readonly object stateLock = new object();
 
         private bool connected;
-        private bool moving;
-
         private bool scopeSafe;
         private bool scopeSafeEnabled;
 
         private ShutterState shutterState = ShutterState.shutterError;
 
-        private readonly object lockObj = new object();
+        private DateTime lastRealTelemetry = DateTime.MinValue;
+
+        // ---------------- VERIFY MODE ----------------
+        private volatile bool verifyMode = false;
+        private DateTime verifyStart;
+        private const int VERIFY_TIMEOUT_MS = 15000;
+
+        private string lastFrame = "";
+
         private TraceLogger log;
 
         public DomeController()
         {
-            log = new TraceLogger("", "DomeController");
-            log.Enabled = true;
-
-            pollTimer = new Timer(1000);
-            pollTimer.Elapsed += Poll;
-            pollTimer.AutoReset = true;
+            log = new TraceLogger("", "DomeController") { Enabled = true };
         }
+
+        // =====================================================
+        // CONNECT
+        // =====================================================
 
         public void Connect(string ip, int port, bool scopeSafeEnable)
         {
             scopeSafeEnabled = scopeSafeEnable;
-            client = new TcpClient();
-            client.ReceiveTimeout = 2000;
-            client.SendTimeout = 2000;
+
+            client = new TcpClient
+            {
+                ReceiveTimeout = 3000,
+                SendTimeout = 3000
+            };
+
             client.Connect(ip, port);
             stream = client.GetStream();
-            stream.ReadTimeout = 2000;
 
-            string response = SendCommandWithRetry("vn", 3);
-            if (response != null && (response.Contains("D6Z") || response.Contains("VN") || response.Contains("XK") || response.Contains("XX")))
-            {
-                isRunning = true;
-                StartReadLoop();
-                connected = true;
-                pollTimer.Start();
-                log.LogMessage("Connect", "Connected successfully.");
-                return;
-            }
+            running = true;
 
-            Disconnect();
-            throw new Exception($"Connection failed. Response: '{response}'");
+            rxThread = new Thread(RxLoop) { IsBackground = true };
+            rxThread.Start();
+
+            verifyThread = new Thread(VerifyLoop) { IsBackground = true };
+            verifyThread.Start();
+
+            connected = true;
+
+            log.LogMessage("Connect", "Connected successfully.");
+
+            // =====================================================
+            // FORCE INITIAL STATE QUERY
+            // =====================================================
+            Thread.Sleep(300);
+            SendRaw("xx00100");
         }
+
+        // =====================================================
+        // DISCONNECT
+        // =====================================================
 
         public void Disconnect()
         {
-            isRunning = false;
-            pollTimer?.Stop();
+            running = false;
 
-            try { readThread?.Join(1000); } catch { }
-            try { stream?.Close(); stream?.Dispose(); } catch { }
-            try { client?.Close(); client?.Dispose(); } catch { }
+            try { rxThread?.Join(1000); } catch { }
+            try { verifyThread?.Join(1000); } catch { }
+
+            try { stream?.Close(); } catch { }
+            try { client?.Close(); } catch { }
 
             connected = false;
         }
 
-        private void StartReadLoop()
-        {
-            readThread = new Thread(ReadLoop);
-            readThread.IsBackground = true;
-            readThread.Start();
-        }
+        // =====================================================
+        // RX LOOP
+        // =====================================================
 
-        private void ReadLoop()
+        private void RxLoop()
         {
-            byte[] buffer = new byte[256];
-            StringBuilder partialMessage = new StringBuilder();
+            byte[] buffer = new byte[1024];
+            var sb = new StringBuilder();
 
-            while (isRunning && client?.Connected == true)
+            while (running && client?.Connected == true)
             {
                 try
                 {
-                    int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                    if (bytesRead == 0) break;
-
-                    string data = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-                    partialMessage.Append(data);
-
-                    int endIndex;
-                    while ((endIndex = partialMessage.ToString().IndexOf("\r\n")) != -1)
+                    if (stream.DataAvailable)
                     {
-                        string message = partialMessage.ToString(0, endIndex);
-                        partialMessage.Remove(0, endIndex + 2);
-                        HandleUnsolicitedMessage(message);
-                    }
-                }
-                catch (IOException) { break; }
-                catch (Exception ex) { log.LogMessage("ReadLoop", ex.Message); break; }
-            }
-        }
+                        int len;
 
-        private void HandleUnsolicitedMessage(string message)
-        {
-            log.LogMessage("ReadLoop", $"Unsolicited: {message}");
-            if (message.Contains("Secure")) scopeSafe = true;
-        }
+                        lock (ioLock)
+                        {
+                            len = stream.Read(buffer, 0, buffer.Length);
+                        }
 
-        private string SendCommandWithRetry(string cmd, int maxAttempts)
-        {
-            string command = Crc32.CalculateCRC(cmd);
-            byte[] data = Encoding.ASCII.GetBytes(command);
-
-            for (int attempt = 1; attempt <= maxAttempts; attempt++)
-            {
-                try
-                {
-                    stream.Write(data, 0, data.Length);
-                    Thread.Sleep(500);
-
-                    byte[] buffer = new byte[256];
-                    int len = stream.Read(buffer, 0, buffer.Length);
-                    string response = Encoding.ASCII.GetString(buffer, 0, len);
-                    log.LogMessage("SendCommand", $"Response for '{cmd}': '{response}'");
-                    return response;
-                }
-                catch (Exception ex)
-                {
-                    log.LogMessage("SendCommand", $"Attempt {attempt} failed: {ex.Message}");
-                    if (attempt < maxAttempts)
-                        Thread.Sleep(200 * (int)Math.Pow(2, attempt));
-                }
-            }
-            return null;
-        }
-
-        private void Poll(object sender, ElapsedEventArgs e)
-        {
-            try
-            {
-                lock (lockObj)
-                {
-                    if (client == null || !client.Connected || !isRunning)
-                        return;
-
-                    string response = SendCommandWithRetry("xx00100", 3);
-                    if (response == null) return;
-
-                    scopeSafe = response.Contains("Secure");
-
-                    // Always evaluate shutter state from response
-                    if (response.IndexOf("opening", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        shutterState = ShutterState.shutterOpening;
-                        moving = true;
-                    }
-                    else if (response.IndexOf("closing", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        shutterState = ShutterState.shutterClosing;
-                        moving = true;
-                    }
-                    else if (response.IndexOf("open", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        shutterState = ShutterState.shutterOpen;
-                        moving = false;
-                    }
-                    else if (response.IndexOf("closed", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        shutterState = ShutterState.shutterClosed;
-                        moving = false;
+                        if (len > 0)
+                        {
+                            sb.Append(Encoding.ASCII.GetString(buffer, 0, len));
+                            Process(sb.ToString());
+                            sb.Clear();
+                        }
                     }
                     else
                     {
+                        Thread.Sleep(20);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log.LogMessage("RX", ex.Message);
+                }
+            }
+        }
+
+        // =====================================================
+        // VERIFY LOOP (COMMAND CONFIRMATION ONLY)
+        // =====================================================
+
+        private void VerifyLoop()
+        {
+            while (running)
+            {
+                Thread.Sleep(500);
+
+                if (!verifyMode)
+                    continue;
+
+                // timeout → error
+                if ((DateTime.Now - verifyStart).TotalMilliseconds > VERIFY_TIMEOUT_MS)
+                {
+                    lock (stateLock)
+                    {
                         shutterState = ShutterState.shutterError;
-                        moving = false;
                     }
 
-                    log.LogMessage("Poll", $"Response='{response}', State={shutterState}, Moving={moving}");
+                    verifyMode = false;
+                    continue;
+                }
+
+                // actively request state
+                SendRaw("xx00100");
+            }
+        }
+
+        // =====================================================
+        // PARSER
+        // =====================================================
+
+        private void Process(string data)
+        {
+            if (string.IsNullOrWhiteSpace(data))
+                return;
+
+            data = data.Replace("[0D]", "\n");
+
+            var parts = data.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var p in parts)
+            {
+                Handle(p.Trim());
+            }
+        }
+
+        // =====================================================
+        // STATE ENGINE
+        // =====================================================
+
+        private void Handle(string msg)
+        {
+            log.LogMessage("RX", msg);
+
+            if (msg == lastFrame)
+                return;
+
+            lastFrame = msg;
+
+            // =====================================================
+            // IGNORE ACK COMPLETELY
+            // =====================================================
+            if (msg.StartsWith("0ATC"))
+                return;
+
+            lock (stateLock)
+            {
+                lastRealTelemetry = DateTime.Now;
+
+                if (msg.Contains("Secure"))
+                    scopeSafe = true;
+
+                // =====================================================
+                // OPEN
+                // =====================================================
+                if (msg.Contains("open") && !msg.Contains("close"))
+                {
+                    shutterState = ShutterState.shutterOpen;
+                    verifyMode = false;
+                    return;
+                }
+
+                // =====================================================
+                // CLOSED
+                // =====================================================
+                if (msg.Contains("closed"))
+                {
+                    shutterState = ShutterState.shutterClosed;
+                    verifyMode = false;
+                    return;
+                }
+
+                // =====================================================
+                // MOVING
+                // =====================================================
+                if (msg.Contains("opening"))
+                {
+                    shutterState = ShutterState.shutterOpening;
+                    return;
+                }
+
+                if (msg.Contains("closing"))
+                {
+                    shutterState = ShutterState.shutterClosing;
+                    return;
+                }
+            }
+        }
+
+        // =====================================================
+        // COMMAND ENGINE
+        // =====================================================
+
+        private void SendRaw(string cmd)
+        {
+            try
+            {
+                byte[] data = Encoding.ASCII.GetBytes(Crc32.CalculateCRC(cmd));
+
+                lock (ioLock)
+                {
+                    stream.Write(data, 0, data.Length);
+                    stream.Flush();
                 }
             }
             catch (Exception ex)
             {
-                log.LogMessage("Poll", ex.Message);
+                log.LogMessage("TX", ex.Message);
             }
         }
 
-        public void OpenShutter()
+        // =====================================================
+        // COMMANDS (ENTER VERIFY MODE)
+        // =====================================================
+
+        public void OpenShutter() => ExecuteCommand("tn00100");
+        public void CloseShutter() => ExecuteCommand("tn00200");
+        public void Abort() => ExecuteCommand("tn00300");
+
+        private void ExecuteCommand(string cmd)
         {
-            moving = true;
-            shutterState = ShutterState.shutterOpening;
-            SendCommandWithRetry("tn00100", 3);
+            SendRaw(cmd);
+
+            lock (stateLock)
+            {
+                verifyMode = true;
+                verifyStart = DateTime.Now;
+            }
         }
 
-        public void CloseShutter()
-        {
-            if (scopeSafeEnabled && !scopeSafe)
-                throw new DriverException("Scope not safe - blocked");
-            moving = true;
-            shutterState = ShutterState.shutterClosing;
-            SendCommandWithRetry("tn00200", 3);
-        }
-
-        public void Abort()
-        {
-            moving = false;
-            shutterState = ShutterState.shutterError;
-            SendCommandWithRetry("tn00300", 3);
-        }
+        // =====================================================
+        // PROPERTIES
+        // =====================================================
 
         public bool IsConnected => connected;
-        public bool Slewing => moving;
-        public ShutterState ShutterStatus => shutterState;
+
+        public bool Slewing
+        {
+            get
+            {
+                lock (stateLock)
+                {
+                    return shutterState == ShutterState.shutterOpening ||
+                           shutterState == ShutterState.shutterClosing ||
+                           verifyMode;
+                }
+            }
+        }
+
+        public ShutterState ShutterStatus
+        {
+            get
+            {
+                lock (stateLock)
+                    return shutterState;
+            }
+        }
     }
 }
