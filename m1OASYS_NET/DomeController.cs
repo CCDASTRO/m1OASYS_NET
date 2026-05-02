@@ -39,6 +39,9 @@ namespace m1OASYS_NET
 
         public DomeController()
         {
+        //===================================================
+        // Tracelogging
+        //===================================================
             bool enableLogging = false;
 
             try
@@ -90,9 +93,9 @@ namespace m1OASYS_NET
 
             log.LogMessage("Connect", "Connected successfully.");
 
-            // =====================================================
-            // FORCE INITIAL STATE QUERY
-            // =====================================================
+        // =====================================================
+        // FORCE INITIAL STATE QUERY
+        // =====================================================
             Thread.Sleep(300);
             SendRaw("xx00100");
         }
@@ -180,7 +183,7 @@ namespace m1OASYS_NET
                     continue;
                 }
 
-                // actively request state
+                // actively request ShutterStatus
                 SendRaw("xx00100");
             }
         }
@@ -217,21 +220,20 @@ namespace m1OASYS_NET
 
             lastFrame = msg;
 
-            // =====================================================
-            // IGNORE ACK COMPLETELY
-            // =====================================================
+        // =====================================================
+        // IGNORE ACK COMPLETELY
+        // =====================================================
             if (msg.StartsWith("0ATC"))
                 return;
 
             lock (stateLock)
             {
                 lastRealTelemetry = DateTime.Now;
+              
 
-                
-
-                // =====================================================
-                // OPEN
-                // =====================================================
+        // =====================================================
+        // OPEN
+        // =====================================================
                 if (msg.Contains("open") && !msg.Contains("close"))
                 {
                     shutterState = ShutterState.shutterOpen;
@@ -239,9 +241,9 @@ namespace m1OASYS_NET
                     return;
                 }
 
-                // =====================================================
-                // CLOSED
-                // =====================================================
+        // =====================================================
+        // CLOSED
+        // =====================================================
                 if (msg.Contains("closed"))
                 {
                     shutterState = ShutterState.shutterClosed;
@@ -249,9 +251,9 @@ namespace m1OASYS_NET
                     return;
                 }
 
-                // =====================================================
-                // MOVING
-                // =====================================================
+        // =====================================================
+        // MOVING
+        // =====================================================
                 if (msg.Contains("opening"))
                 {
                     shutterState = ShutterState.shutterOpening;

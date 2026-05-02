@@ -56,6 +56,7 @@ namespace m1OASYS_NET
         // -----------------------------
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SetupDialogForm));
             this.txtIP = new System.Windows.Forms.TextBox();
             this.txtPort = new System.Windows.Forms.TextBox();
             this.chkLogging = new System.Windows.Forms.CheckBox();
@@ -67,14 +68,14 @@ namespace m1OASYS_NET
             // 
             // txtIP
             // 
-            this.txtIP.Location = new System.Drawing.Point(70, 12);
+            this.txtIP.Location = new System.Drawing.Point(47, 12);
             this.txtIP.Name = "txtIP";
             this.txtIP.Size = new System.Drawing.Size(110, 20);
             this.txtIP.TabIndex = 2;
             // 
             // txtPort
             // 
-            this.txtPort.Location = new System.Drawing.Point(70, 38);
+            this.txtPort.Location = new System.Drawing.Point(47, 38);
             this.txtPort.Name = "txtPort";
             this.txtPort.Size = new System.Drawing.Size(110, 20);
             this.txtPort.TabIndex = 3;
@@ -82,7 +83,7 @@ namespace m1OASYS_NET
             // chkLogging
             // 
             this.chkLogging.AutoSize = true;
-            this.chkLogging.Location = new System.Drawing.Point(70, 74);
+            this.chkLogging.Location = new System.Drawing.Point(27, 64);
             this.chkLogging.Name = "chkLogging";
             this.chkLogging.Size = new System.Drawing.Size(100, 17);
             this.chkLogging.TabIndex = 5;
@@ -90,18 +91,18 @@ namespace m1OASYS_NET
             // 
             // btnOK
             // 
-            this.btnOK.Location = new System.Drawing.Point(12, 109);
+            this.btnOK.Location = new System.Drawing.Point(12, 87);
             this.btnOK.Name = "btnOK";
-            this.btnOK.Size = new System.Drawing.Size(75, 23);
+            this.btnOK.Size = new System.Drawing.Size(65, 23);
             this.btnOK.TabIndex = 6;
             this.btnOK.Text = "OK";
             this.btnOK.Click += new System.EventHandler(this.cmdOK_Click);
             // 
             // btnCancel
             // 
-            this.btnCancel.Location = new System.Drawing.Point(105, 109);
+            this.btnCancel.Location = new System.Drawing.Point(93, 87);
             this.btnCancel.Name = "btnCancel";
-            this.btnCancel.Size = new System.Drawing.Size(75, 23);
+            this.btnCancel.Size = new System.Drawing.Size(64, 23);
             this.btnCancel.TabIndex = 7;
             this.btnCancel.Text = "Cancel";
             this.btnCancel.Click += new System.EventHandler(this.cmdCancel_Click);
@@ -126,7 +127,7 @@ namespace m1OASYS_NET
             // 
             // SetupDialogForm
             // 
-            this.ClientSize = new System.Drawing.Size(194, 144);
+            this.ClientSize = new System.Drawing.Size(181, 121);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.txtIP);
@@ -134,8 +135,9 @@ namespace m1OASYS_NET
             this.Controls.Add(this.chkLogging);
             this.Controls.Add(this.btnOK);
             this.Controls.Add(this.btnCancel);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "SetupDialogForm";
-            this.Text = "Dome Setup";
+            this.Text = "m1 Setup";
             this.Load += new System.EventHandler(this.SetupDialogForm_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
