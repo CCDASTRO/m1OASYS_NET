@@ -83,7 +83,7 @@ namespace m1OASYS_NET
             // chkLogging
             // 
             this.chkLogging.AutoSize = true;
-            this.chkLogging.Location = new System.Drawing.Point(41, 63);
+            this.chkLogging.Location = new System.Drawing.Point(61, 63);
             this.chkLogging.Name = "chkLogging";
             this.chkLogging.Size = new System.Drawing.Size(100, 17);
             this.chkLogging.TabIndex = 5;
@@ -91,7 +91,7 @@ namespace m1OASYS_NET
             // 
             // btnOK
             // 
-            this.btnOK.Location = new System.Drawing.Point(26, 86);
+            this.btnOK.Location = new System.Drawing.Point(185, 8);
             this.btnOK.Name = "btnOK";
             this.btnOK.Size = new System.Drawing.Size(65, 23);
             this.btnOK.TabIndex = 6;
@@ -100,7 +100,7 @@ namespace m1OASYS_NET
             // 
             // btnCancel
             // 
-            this.btnCancel.Location = new System.Drawing.Point(107, 86);
+            this.btnCancel.Location = new System.Drawing.Point(186, 37);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(64, 23);
             this.btnCancel.TabIndex = 7;
@@ -127,7 +127,7 @@ namespace m1OASYS_NET
             // 
             // SetupDialogForm
             // 
-            this.ClientSize = new System.Drawing.Size(200, 121);
+            this.ClientSize = new System.Drawing.Size(261, 85);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.txtIP);
