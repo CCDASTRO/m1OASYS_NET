@@ -135,8 +135,11 @@ namespace m1OASYS_NET
             this.Controls.Add(this.chkLogging);
             this.Controls.Add(this.btnOK);
             this.Controls.Add(this.btnCancel);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.MaximizeBox = false;
             this.Name = "SetupDialogForm";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
             this.Text = "m1 Setup";
             this.Load += new System.EventHandler(this.SetupDialogForm_Load);
             this.ResumeLayout(false);
