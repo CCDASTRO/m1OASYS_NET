@@ -68,14 +68,14 @@ namespace m1OASYS_NET
             // 
             // txtIP
             // 
-            this.txtIP.Location = new System.Drawing.Point(47, 12);
+            this.txtIP.Location = new System.Drawing.Point(61, 11);
             this.txtIP.Name = "txtIP";
             this.txtIP.Size = new System.Drawing.Size(110, 20);
             this.txtIP.TabIndex = 2;
             // 
             // txtPort
             // 
-            this.txtPort.Location = new System.Drawing.Point(47, 38);
+            this.txtPort.Location = new System.Drawing.Point(61, 37);
             this.txtPort.Name = "txtPort";
             this.txtPort.Size = new System.Drawing.Size(110, 20);
             this.txtPort.TabIndex = 3;
@@ -83,7 +83,7 @@ namespace m1OASYS_NET
             // chkLogging
             // 
             this.chkLogging.AutoSize = true;
-            this.chkLogging.Location = new System.Drawing.Point(27, 64);
+            this.chkLogging.Location = new System.Drawing.Point(41, 63);
             this.chkLogging.Name = "chkLogging";
             this.chkLogging.Size = new System.Drawing.Size(100, 17);
             this.chkLogging.TabIndex = 5;
@@ -91,7 +91,7 @@ namespace m1OASYS_NET
             // 
             // btnOK
             // 
-            this.btnOK.Location = new System.Drawing.Point(12, 87);
+            this.btnOK.Location = new System.Drawing.Point(26, 86);
             this.btnOK.Name = "btnOK";
             this.btnOK.Size = new System.Drawing.Size(65, 23);
             this.btnOK.TabIndex = 6;
@@ -100,7 +100,7 @@ namespace m1OASYS_NET
             // 
             // btnCancel
             // 
-            this.btnCancel.Location = new System.Drawing.Point(93, 87);
+            this.btnCancel.Location = new System.Drawing.Point(107, 86);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(64, 23);
             this.btnCancel.TabIndex = 7;
@@ -110,7 +110,7 @@ namespace m1OASYS_NET
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(10, 15);
+            this.label1.Location = new System.Drawing.Point(24, 14);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(17, 13);
             this.label1.TabIndex = 0;
@@ -119,7 +119,7 @@ namespace m1OASYS_NET
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(10, 41);
+            this.label2.Location = new System.Drawing.Point(24, 40);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(26, 13);
             this.label2.TabIndex = 1;
@@ -127,7 +127,7 @@ namespace m1OASYS_NET
             // 
             // SetupDialogForm
             // 
-            this.ClientSize = new System.Drawing.Size(181, 121);
+            this.ClientSize = new System.Drawing.Size(200, 121);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.txtIP);
