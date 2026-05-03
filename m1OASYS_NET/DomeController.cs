@@ -31,7 +31,7 @@ namespace m1OASYS_NET
         // ---------------- VERIFY MODE ----------------
         private volatile bool verifyMode = false;
         private DateTime verifyStart;
-        private const int VERIFY_TIMEOUT_MS = 15000;
+        private const int VERIFY_TIMEOUT_MS = 75000;
 
         private string lastFrame = "";
 
@@ -213,6 +213,11 @@ namespace m1OASYS_NET
 
         private void Handle(string msg)
         {
+            if (string.IsNullOrWhiteSpace(msg))
+                return;
+
+            msg = msg.Trim();
+
             log.LogMessage("RX", msg);
 
             if (msg == lastFrame)
@@ -220,30 +225,35 @@ namespace m1OASYS_NET
 
             lastFrame = msg;
 
-        // =====================================================
-        // IGNORE ACK COMPLETELY
-        // =====================================================
             if (msg.StartsWith("0ATC"))
+                return;
+
+            if (!msg.Contains("XX001"))
                 return;
 
             lock (stateLock)
             {
                 lastRealTelemetry = DateTime.Now;
-              
 
-        // =====================================================
-        // OPEN
-        // =====================================================
-                if (msg.Contains("open") && !msg.Contains("close"))
+                // If currently opening, ignore temporary CLOSED
+                if (verifyMode &&
+                    shutterState == ShutterState.shutterOpening &&
+                    msg.Contains("closed"))
                 {
-                    shutterState = ShutterState.shutterOpen;
-                    verifyMode = false;
+                    log.LogMessage("VERIFY", "Ignoring temporary CLOSED during OPEN verify");
                     return;
                 }
 
-        // =====================================================
-        // CLOSED
-        // =====================================================
+                // If currently closing, ignore temporary OPEN
+                if (verifyMode &&
+                    shutterState == ShutterState.shutterClosing &&
+                    msg.Contains("open") &&
+                    !msg.Contains("closed"))
+                {
+                    log.LogMessage("VERIFY", "Ignoring temporary OPEN during CLOSE verify");
+                    return;
+                }
+
                 if (msg.Contains("closed"))
                 {
                     shutterState = ShutterState.shutterClosed;
@@ -251,18 +261,10 @@ namespace m1OASYS_NET
                     return;
                 }
 
-        // =====================================================
-        // MOVING
-        // =====================================================
-                if (msg.Contains("opening"))
+                if (msg.Contains("open") && !msg.Contains("closed"))
                 {
-                    shutterState = ShutterState.shutterOpening;
-                    return;
-                }
-
-                if (msg.Contains("closing"))
-                {
-                    shutterState = ShutterState.shutterClosing;
+                    shutterState = ShutterState.shutterOpen;
+                    verifyMode = false;
                     return;
                 }
             }
@@ -300,13 +302,19 @@ namespace m1OASYS_NET
 
         private void ExecuteCommand(string cmd)
         {
-            SendRaw(cmd);
-
             lock (stateLock)
             {
+                if (cmd == "tn00100")
+                    shutterState = ShutterState.shutterOpening;
+
+                if (cmd == "tn00200")
+                    shutterState = ShutterState.shutterClosing;
+
                 verifyMode = true;
                 verifyStart = DateTime.Now;
             }
+
+            SendRaw(cmd);
         }
 
         // =====================================================
