@@ -31,7 +31,7 @@ namespace m1OASYS_NET
         // ---------------- VERIFY MODE ----------------
         private volatile bool verifyMode = false;
         private DateTime verifyStart;
-        private const int VERIFY_TIMEOUT_MS = 75000;
+        private const int VERIFY_TIMEOUT_MS = 90000;
 
         private string lastFrame = "";
 
