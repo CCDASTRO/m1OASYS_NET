@@ -1,10 +1,11 @@
-﻿using System;
-using System.Collections;
-using System.Runtime.InteropServices;
-using ASCOM;
+﻿using ASCOM;
 using ASCOM.DeviceInterface;
 using ASCOM.Utilities;
-
+using System;
+using System.Collections;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Windows.Forms;
 namespace m1OASYS_NET
 {
     [ComVisible(true)]
@@ -49,7 +50,9 @@ namespace m1OASYS_NET
         }
 
         #endregion
+        private Thread uiThread;
 
+      
         private DomeController dome = new DomeController();
         private bool connected;
         private StatusForm statusForm;
@@ -64,9 +67,11 @@ namespace m1OASYS_NET
             {
                 if (value)
                 {
-                    Profile p = new Profile();
+                    Profile p =
+                        new Profile();
 
-                    p.DeviceType = "Dome";
+                    p.DeviceType =
+                        "Dome";
 
                     string ip =
                         p.GetValue(
@@ -90,6 +95,7 @@ namespace m1OASYS_NET
                                 "UsePulseTelemetry",
                                 "",
                                 "False"));
+
                     bool scopeSafety =
                         bool.Parse(
                             p.GetValue(
@@ -97,8 +103,14 @@ namespace m1OASYS_NET
                                 "UseScopeSafety",
                                 "",
                                 "False"));
+
                     int openPulseCount =
-                        int.Parse(p.GetValue(ID, "OpenPulseCount", "", "5000"));
+                        int.Parse(
+                            p.GetValue(
+                                ID,
+                                "OpenPulseCount",
+                                "",
+                                "5000"));
 
                     RoofTelemetry.OpenPulseCount =
                         openPulseCount;
@@ -110,37 +122,76 @@ namespace m1OASYS_NET
                         scopeSafety);
 
                     connected = true;
+
+                    // ---------------------------------
+                    // Launch UI on dedicated STA thread
+                    // ---------------------------------
+
                     if (statusForm == null ||
                         statusForm.IsDisposed)
                     {
-                        statusForm =
-                            new StatusForm();
+                        uiThread =
+                            new Thread(() =>
+                            {
+                                statusForm =
+                                    new StatusForm();
 
-                        statusForm.Show();
+                                Application.Run(
+                                    statusForm);
+                            });
+
+                        uiThread.SetApartmentState(
+                            ApartmentState.STA);
+
+                        uiThread.IsBackground =
+                            true;
+
+                        uiThread.Start();
                     }
                 }
                 else
                 {
-                    if (statusForm != null)
-                    {
-                        try
-                        {
-                            statusForm.Close();
-                        }
-                        catch
-                        {
-                        }
-
-                        statusForm = null;
-                    }
+                    // ---------------------------------
+                    // Stop dome controller first
+                    // ---------------------------------
 
                     dome.Disconnect();
 
                     connected = false;
+
+                    RoofTelemetry.Moving =
+                        false;
+
+                    // ---------------------------------
+                    // Safely close UI
+                    // ---------------------------------
+
+                    try
+                    {
+                        if (statusForm != null &&
+                            !statusForm.IsDisposed)
+                        {
+                            statusForm.Invoke(
+                                new Action(() =>
+                                {
+                                    try
+                                    {
+                                        statusForm.Close();
+                                    }
+                                    catch
+                                    {
+                                    }
+                                }));
+                        }
+                    }
+                    catch
+                    {
+                    }
+
+                    statusForm = null;
                 }
             }
         }
-
         // ---------------- REQUIRED ASCOM ENTRY ----------------
         public void SetupDialog()
         {
@@ -159,7 +210,7 @@ namespace m1OASYS_NET
         public string Name => "m1OASYS Dome";
         public string Description => "TCP Dome Driver";
         public string DriverInfo => "m1OASYS ASCOM Dome Driver";
-        public string DriverVersion => "1.1.7";
+        public string DriverVersion => "1.1.10";
         public short InterfaceVersion => 2;
 
         // ---------------- CAPABILITIES ----------------

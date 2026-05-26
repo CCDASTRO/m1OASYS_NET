@@ -2,6 +2,7 @@
 using ASCOM.DeviceInterface;
 using ASCOM.Utilities;
 using System;
+using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -114,14 +115,70 @@ namespace m1OASYS_NET
         {
             running = false;
 
-            try { rxThread?.Join(1000); } catch { }
-            try { verifyThread?.Join(1000); } catch { }
-
-            try { stream?.Close(); } catch { }
-            try { client?.Close(); } catch { }
-            try { telemetryThread?.Join(1000); }
-            catch { }
             connected = false;
+
+            // ---------------------------------
+            // Force socket shutdown FIRST
+            // ---------------------------------
+
+            try
+            {
+                stream?.Close();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                client?.Close();
+            }
+            catch
+            {
+            }
+
+            // ---------------------------------
+            // Stop worker threads
+            // ---------------------------------
+
+            try
+            {
+                if (rxThread != null &&
+                    rxThread.IsAlive)
+                {
+                    rxThread.Join(1000);
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (verifyThread != null &&
+                    verifyThread.IsAlive)
+                {
+                    verifyThread.Join(1000);
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (telemetryThread != null &&
+                    telemetryThread.IsAlive)
+                {
+                    telemetryThread.Join(1000);
+                }
+            }
+            catch
+            {
+            }
+
+            RoofTelemetry.Moving =
+                false;
         }
 
         // =====================================================
@@ -130,39 +187,88 @@ namespace m1OASYS_NET
 
         private void RxLoop()
         {
-            byte[] buffer = new byte[1024];
-            var sb = new StringBuilder();
+            byte[] buffer =
+                new byte[1024];
 
-            while (running && client?.Connected == true)
+            var sb =
+                new StringBuilder();
+
+            while (running)
             {
                 try
                 {
+                    // -----------------------------
+                    // Validate connection
+                    // -----------------------------
+
+                    if (client == null ||
+                        !client.Connected ||
+                        stream == null)
+                    {
+                        break;
+                    }
+
+                    // -----------------------------
+                    // Read incoming data
+                    // -----------------------------
+
                     if (stream.DataAvailable)
                     {
                         int len;
 
                         lock (ioLock)
                         {
-                            len = stream.Read(buffer, 0, buffer.Length);
+                            len =
+                                stream.Read(
+                                    buffer,
+                                    0,
+                                    buffer.Length);
                         }
 
-                        if (len > 0)
+                        // Remote disconnect
+                        if (len <= 0)
                         {
-                            sb.Append(Encoding.ASCII.GetString(buffer, 0, len));
-                            Process(sb.ToString());
-                            sb.Clear();
+                            break;
                         }
+
+                        sb.Append(
+                            Encoding.ASCII.GetString(
+                                buffer,
+                                0,
+                                len));
+
+                        Process(sb.ToString());
+
+                        sb.Clear();
                     }
                     else
                     {
                         Thread.Sleep(20);
                     }
                 }
+                catch (ObjectDisposedException)
+                {
+                    // Expected during disconnect
+                    break;
+                }
+                catch (IOException)
+                {
+                    // Socket closed
+                    break;
+                }
                 catch (Exception ex)
                 {
-                    log.LogMessage("RX", ex.Message);
+                    log.LogMessage(
+                        "RX",
+                        ex.Message);
+
+                    break;
                 }
             }
+
+            log.LogMessage(
+                "RX",
+                "RX thread exited");
         }
 
         // =====================================================

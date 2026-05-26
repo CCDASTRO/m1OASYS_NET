@@ -12,6 +12,8 @@ namespace m1OASYS_NET
 {
     public partial class StatusForm : Form
     {
+        
+        
         private bool calibrationShown = false;
         public StatusForm()
         {
@@ -27,7 +29,14 @@ namespace m1OASYS_NET
      object sender,
      EventArgs e)
         {
-            lblState.Text =
+            
+                if (IsDisposed ||
+                    !Visible)
+                {
+                    return;
+                }
+
+                lblState.Text =
                 "State: " +
                 RoofTelemetry.ShutterState;
 
@@ -142,7 +151,13 @@ namespace m1OASYS_NET
                 MessageBox.Show(ex.Message);
             }
         }
+        protected override void OnFormClosing(
+    FormClosingEventArgs e)
+        {
+            timer1.Enabled = false;
 
+            base.OnFormClosing(e);
+        }
         private void lblWatchdog_Click(object sender, EventArgs e)
         {
 
