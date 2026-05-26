@@ -52,30 +52,90 @@ namespace m1OASYS_NET
 
         private DomeController dome = new DomeController();
         private bool connected;
-
+        private StatusForm statusForm;
         private const string ID = "ASCOM.m1OASYS_NET.Dome";
 
         // ---------------- ASCOM CONNECT ----------------
         public bool Connected
         {
             get => connected;
+
             set
             {
                 if (value)
                 {
                     Profile p = new Profile();
+
                     p.DeviceType = "Dome";
 
-                    string ip = p.GetValue(ID, "IP", "", "127.0.0.1");
-                    int port = int.Parse(p.GetValue(ID, "Port", "", "0"));
-                    bool safe = bool.Parse(p.GetValue(ID, "ScopeSafeEnabled", "", "False"));
+                    string ip =
+                        p.GetValue(
+                            ID,
+                            "IP",
+                            "",
+                            "127.0.0.1");
 
-                    dome.Connect(ip, port);
+                    int port =
+                        int.Parse(
+                            p.GetValue(
+                                ID,
+                                "Port",
+                                "",
+                                "0"));
+
+                    bool pulseTelemetry =
+                        bool.Parse(
+                            p.GetValue(
+                                ID,
+                                "UsePulseTelemetry",
+                                "",
+                                "False"));
+                    bool scopeSafety =
+                        bool.Parse(
+                            p.GetValue(
+                                ID,
+                                "UseScopeSafety",
+                                "",
+                                "False"));
+                    int openPulseCount =
+                        int.Parse(p.GetValue(ID, "OpenPulseCount", "", "5000"));
+
+                    RoofTelemetry.OpenPulseCount =
+                        openPulseCount;
+
+                    dome.Connect(
+                        ip,
+                        port,
+                        pulseTelemetry,
+                        scopeSafety);
+
                     connected = true;
+                    if (statusForm == null ||
+                        statusForm.IsDisposed)
+                    {
+                        statusForm =
+                            new StatusForm();
+
+                        statusForm.Show();
+                    }
                 }
                 else
                 {
+                    if (statusForm != null)
+                    {
+                        try
+                        {
+                            statusForm.Close();
+                        }
+                        catch
+                        {
+                        }
+
+                        statusForm = null;
+                    }
+
                     dome.Disconnect();
+
                     connected = false;
                 }
             }

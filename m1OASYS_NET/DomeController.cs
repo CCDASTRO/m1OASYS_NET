@@ -12,12 +12,12 @@ namespace m1OASYS_NET
     {
         private TcpClient client;
         private NetworkStream stream;
-
+        private bool usePulseTelemetry;
         private Thread rxThread;
         private Thread verifyThread;
-
+        private Thread telemetryThread;
         private volatile bool running;
-
+        private bool useScopeSafety;
         private readonly object ioLock = new object();
         private readonly object stateLock = new object();
 
@@ -68,7 +68,7 @@ namespace m1OASYS_NET
         // CONNECT
         // =====================================================
 
-        public void Connect(string ip, int port)
+        public void Connect(string ip, int port, bool enablePulseTelemetry, bool enableScopeSafety)
         {
             
 
@@ -80,7 +80,8 @@ namespace m1OASYS_NET
 
             client.Connect(ip, port);
             stream = client.GetStream();
-
+            usePulseTelemetry = enablePulseTelemetry;
+            useScopeSafety = enableScopeSafety;
             running = true;
 
             rxThread = new Thread(RxLoop) { IsBackground = true };
@@ -88,9 +89,14 @@ namespace m1OASYS_NET
 
             verifyThread = new Thread(VerifyLoop) { IsBackground = true };
             verifyThread.Start();
+            telemetryThread = new Thread(TelemetryLoop)
+    {
+        IsBackground = true
+    };
 
+            telemetryThread.Start();
             connected = true;
-
+            RoofTelemetry.LastReconnectTime = DateTime.Now;
             log.LogMessage("Connect", "Connected successfully.");
 
         // =====================================================
@@ -113,7 +119,8 @@ namespace m1OASYS_NET
 
             try { stream?.Close(); } catch { }
             try { client?.Close(); } catch { }
-
+            try { telemetryThread?.Join(1000); }
+            catch { }
             connected = false;
         }
 
@@ -171,23 +178,143 @@ namespace m1OASYS_NET
                 if (!verifyMode)
                     continue;
 
-                // timeout → error
-                if ((DateTime.Now - verifyStart).TotalMilliseconds > VERIFY_TIMEOUT_MS)
+                // ---------------------------------
+                // Movement timeout protection
+                // ---------------------------------
+
+                if ((DateTime.Now - verifyStart)
+                    .TotalMilliseconds >
+                    VERIFY_TIMEOUT_MS)
                 {
                     lock (stateLock)
                     {
-                        shutterState = ShutterState.shutterError;
+                        shutterState =
+                            ShutterState.shutterError;
+
+                        RoofTelemetry.ShutterState =
+                            "Error";
+
+                        RoofTelemetry.Faulted =
+                            true;
+
+                        RoofTelemetry.FaultMessage =
+                            "Movement timeout";
+                        RoofTelemetry.LastFaultTime = DateTime.Now;
+
+                        RoofTelemetry.LastWatchdogEvent =
+                            "Movement timeout";
+                        try
+                        {
+                            SendRaw("tn00300");
+                        }
+                        catch
+                        {
+                        }
+                        RoofTelemetry.Moving =
+                            false;
                     }
 
                     verifyMode = false;
+
                     continue;
                 }
 
-                // actively request ShutterStatus
+                // ---------------------------------
+                // Request live roof status
+                // ---------------------------------
+
                 SendRaw("xx00100");
             }
         }
+        private void TelemetryLoop()
+        {
+            while (running)
+            {
+                try
+                {
+                    // ---------------------------------
+                    // Request roof state
+                    // ---------------------------------
 
+                    SendRaw("xx00100");
+
+                    // ---------------------------------
+                    // Pulse telemetry
+                    // ---------------------------------
+
+                    if (usePulseTelemetry)
+                    {
+                        Thread.Sleep(150);
+
+                        SendRaw("cv007");
+
+                        Thread.Sleep(150);
+
+                        // -----------------------------
+                        // Pulse watchdog protection
+                        // -----------------------------
+
+                        if (RoofTelemetry.Moving)
+                        {
+                            if (
+                                RoofTelemetry.CurrentPulseCount ==
+                                RoofTelemetry.LastPulseCount)
+                            {
+                                double elapsed =
+                                    (
+                                        DateTime.Now -
+                                        RoofTelemetry.LastPulseTime
+                                    ).TotalSeconds;
+
+                                if (elapsed > 3)
+                                {
+                                    lock (stateLock)
+                                    {
+                                        shutterState =
+                                            ShutterState.shutterError;
+
+                                        RoofTelemetry.ShutterState =
+                                            "Error";
+
+                                        RoofTelemetry.Faulted =
+                                            true;
+
+                                        RoofTelemetry.FaultMessage =
+                                            "No pulse movement";
+                                        RoofTelemetry.LastFaultTime = DateTime.Now;
+
+                                        RoofTelemetry.LastWatchdogEvent =
+                                            "No pulse movement";
+                                        try
+                                        {
+                                            SendRaw("tn00300");
+                                        }
+                                        catch
+                                        {
+                                        }
+                                        RoofTelemetry.Moving =
+                                            false;
+                                    }
+
+                                    verifyMode = false;
+                                }
+                            }
+
+                            RoofTelemetry.LastPulseCount =
+                                RoofTelemetry.CurrentPulseCount;
+                        }
+                    }
+
+                    Thread.Sleep(1000);
+                }
+                catch (Exception ex)
+                {
+                    log.LogMessage(
+                        "TelemetryLoop",
+                        ex.Message);
+                }
+            }
+        }
         // =====================================================
         // PARSER
         // =====================================================
@@ -217,6 +344,83 @@ namespace m1OASYS_NET
                 return;
 
             msg = msg.Trim();
+            if (msg.Contains("Secure0081"))
+            {
+                RoofTelemetry.MountSafe = true;
+
+                log.LogMessage(
+                    "ScopeSafe",
+                    "SAFE");
+
+                return;
+            }
+
+            if (msg.Contains("NotSecure"))
+            {
+                RoofTelemetry.MountSafe = false;
+
+                log.LogMessage(
+                    "ScopeSafe",
+                    "UNSAFE");
+
+                return;
+            }
+            if (usePulseTelemetry &&
+                msg.StartsWith("CV007"))
+            {
+                try
+                {
+                    string value =
+                        msg.Substring(5).Trim();
+
+                    if (int.TryParse(value, out int count))
+                    {
+                        RoofTelemetry.CurrentPulseCount =
+                            count;
+
+                        RoofTelemetry.LastPulseTime =
+                            DateTime.Now;
+
+                        if (RoofTelemetry.OpenPulseCount > 0)
+                        {
+                            int percent =
+                                (int)(
+                                    (double)count /
+                                    RoofTelemetry.OpenPulseCount
+                                    * 100.0);
+
+                            percent =
+                                Math.Max(
+                                    0,
+                                    Math.Min(100, percent));
+
+                            if (shutterState ==
+    ShutterState.shutterClosing)
+                            {
+                                RoofTelemetry.PercentOpen =
+                                    100 - percent;
+                            }
+                            else
+                            {
+                                RoofTelemetry.PercentOpen =
+                                    percent;
+                            }
+                        }
+
+                        log.LogMessage(
+                            "PULSE_COUNT",
+                            count.ToString());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    log.LogMessage(
+                        "CounterParse",
+                        ex.Message);
+                }
+
+                return;
+            }
 
             log.LogMessage("RX", msg);
 
@@ -234,6 +438,9 @@ namespace m1OASYS_NET
             lock (stateLock)
             {
                 lastRealTelemetry = DateTime.Now;
+                RoofTelemetry.Faulted = false;
+
+                RoofTelemetry.FaultMessage = "";
 
                 // If currently opening, ignore temporary CLOSED
                 if (verifyMode &&
@@ -256,15 +463,78 @@ namespace m1OASYS_NET
 
                 if (msg.Contains("closed"))
                 {
-                    shutterState = ShutterState.shutterClosed;
+                    shutterState =
+                        ShutterState.shutterClosed;
+
+                    RoofTelemetry.ShutterState =
+                        "Closed";
+
+                    RoofTelemetry.ClosedLimitActive =
+                        true;
+
+                    RoofTelemetry.OpenLimitActive =
+                        false;
+
+                    RoofTelemetry.Moving =
+                        false;
+
                     verifyMode = false;
+
                     return;
                 }
 
-                if (msg.Contains("open") && !msg.Contains("closed"))
+                if (msg.Contains("open") &&
+    !msg.Contains("closed"))
                 {
-                    shutterState = ShutterState.shutterOpen;
+                    shutterState =
+                        ShutterState.shutterOpen;
+
+                    RoofTelemetry.ShutterState =
+                        "Open";
+
+                    RoofTelemetry.OpenLimitActive =
+                        true;
+
+                    RoofTelemetry.ClosedLimitActive =
+                        false;
+
+                    RoofTelemetry.Moving =
+                        false;
+
+                    // -----------------------------
+                    // Auto-save calibration
+                    // -----------------------------
+
+                    if (usePulseTelemetry && RoofTelemetry.CalibrationMode)
+                    {
+                        int learned =
+                            (int)(
+                                RoofTelemetry.CurrentPulseCount
+                                * 1.02);
+
+                        RoofTelemetry.OpenPulseCount = learned;
+                        RoofTelemetry.LastCalibrationValue = learned;
+                        RoofTelemetry.CalibrationMode = false;
+
+                        try
+                        {
+                            Profile p =
+                                new Profile();
+
+                            p.DeviceType = "Dome";
+
+                            p.WriteValue(
+                                "m1OASYS_NET.Dome",
+                                "OpenPulseCount",
+                                learned.ToString());
+                        }
+                        catch
+                        {
+                        }
+                    }
+
                     verifyMode = false;
+
                     return;
                 }
             }
@@ -302,15 +572,79 @@ namespace m1OASYS_NET
 
         private void ExecuteCommand(string cmd)
         {
+            // ---------------------------------
+            // Optional scope safety enforcement
+            // ---------------------------------
+
+            if (useScopeSafety &&
+                (
+                    cmd == "tn00100" ||
+                    cmd == "tn00200"
+                ))
+            {
+                SendRaw("xx005sensoron00");
+
+                Thread.Sleep(1000);
+
+                SendRaw("xx00200");
+
+                Thread.Sleep(1000);
+
+                if (!RoofTelemetry.MountSafe)
+                {
+                    RoofTelemetry.Faulted = true;
+
+                    RoofTelemetry.FaultMessage =
+                        "Scope not safe";
+
+                    RoofTelemetry.LastFaultTime =
+                        DateTime.Now;
+
+                    throw new ASCOM.InvalidOperationException(
+                        "Scope not safe for roof movement");
+                }
+            }
+
             lock (stateLock)
             {
                 if (cmd == "tn00100")
-                    shutterState = ShutterState.shutterOpening;
+                {
+                    shutterState =
+                        ShutterState.shutterOpening;
+
+                    RoofTelemetry.ShutterState =
+                        "Opening";
+
+                    RoofTelemetry.Moving = true;
+
+                    RoofTelemetry.MotionStartTime =
+                        DateTime.Now;
+                }
 
                 if (cmd == "tn00200")
-                    shutterState = ShutterState.shutterClosing;
+                {
+                    shutterState =
+                        ShutterState.shutterClosing;
+
+                    RoofTelemetry.ShutterState =
+                        "Closing";
+
+                    RoofTelemetry.Moving = true;
+
+                    RoofTelemetry.MotionStartTime =
+                        DateTime.Now;
+                }
+
+                if (cmd == "tn00300")
+                {
+                    RoofTelemetry.ShutterState =
+                        "Stopped";
+
+                    RoofTelemetry.Moving = false;
+                }
 
                 verifyMode = true;
+
                 verifyStart = DateTime.Now;
             }
 

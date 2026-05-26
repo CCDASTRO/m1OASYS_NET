@@ -21,7 +21,34 @@ namespace m1OASYS_NET
             txtIP.Text = p.GetValue(Id, "IP", "", "");
             txtPort.Text = p.GetValue(Id, "Port", "", "");
 
-            
+            // -----------------------------
+            // Hall Pulse Telemetry option
+            // -----------------------------
+            bool pulseEnabled;
+
+            bool.TryParse(
+                p.GetValue(
+                    Id,
+                    "UsePulseTelemetry",
+                    "",
+                    "False"),
+                out pulseEnabled);
+
+            chkPulseTelemetry.Checked = pulseEnabled;
+
+            bool scopeSafety;
+
+            bool.TryParse(
+                p.GetValue(
+                    Id,
+                    "UseScopeSafety",
+                    "",
+                    "False"),
+                out scopeSafety);
+
+            chkScopeSafety.Checked =
+                scopeSafety;
+
             // -----------------------------
             // Logging option
             // -----------------------------
@@ -42,7 +69,8 @@ namespace m1OASYS_NET
             p.WriteValue(Id, "Port", txtPort.Text);
 
             p.WriteValue(Id, "EnableLogging", chkLogging.Checked.ToString());
-
+            p.WriteValue(Id, "UsePulseTelemetry", chkPulseTelemetry.Checked.ToString());
+            p.WriteValue(Id, "UseScopeSafety", chkScopeSafety.Checked.ToString());
             Close();
         }
 
@@ -64,6 +92,8 @@ namespace m1OASYS_NET
             this.btnCancel = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
+            this.chkPulseTelemetry = new System.Windows.Forms.CheckBox();
+            this.chkScopeSafety = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // txtIP
@@ -83,7 +113,7 @@ namespace m1OASYS_NET
             // chkLogging
             // 
             this.chkLogging.AutoSize = true;
-            this.chkLogging.Location = new System.Drawing.Point(61, 63);
+            this.chkLogging.Location = new System.Drawing.Point(27, 63);
             this.chkLogging.Name = "chkLogging";
             this.chkLogging.Size = new System.Drawing.Size(100, 17);
             this.chkLogging.TabIndex = 5;
@@ -125,9 +155,31 @@ namespace m1OASYS_NET
             this.label2.TabIndex = 1;
             this.label2.Text = "Port";
             // 
+            // chkPulseTelemetry
+            // 
+            this.chkPulseTelemetry.AutoSize = true;
+            this.chkPulseTelemetry.Location = new System.Drawing.Point(151, 66);
+            this.chkPulseTelemetry.Name = "chkPulseTelemetry";
+            this.chkPulseTelemetry.Size = new System.Drawing.Size(93, 17);
+            this.chkPulseTelemetry.TabIndex = 8;
+            this.chkPulseTelemetry.Text = "Hall Telemetry";
+            this.chkPulseTelemetry.UseVisualStyleBackColor = true;
+            // 
+            // chkScopeSafety
+            // 
+            this.chkScopeSafety.AutoSize = true;
+            this.chkScopeSafety.Location = new System.Drawing.Point(27, 86);
+            this.chkScopeSafety.Name = "chkScopeSafety";
+            this.chkScopeSafety.Size = new System.Drawing.Size(161, 17);
+            this.chkScopeSafety.TabIndex = 9;
+            this.chkScopeSafety.Text = "Enable Mount Safety Sensor";
+            this.chkScopeSafety.UseVisualStyleBackColor = true;
+            // 
             // SetupDialogForm
             // 
-            this.ClientSize = new System.Drawing.Size(261, 85);
+            this.ClientSize = new System.Drawing.Size(261, 108);
+            this.Controls.Add(this.chkScopeSafety);
+            this.Controls.Add(this.chkPulseTelemetry);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.txtIP);
@@ -135,7 +187,7 @@ namespace m1OASYS_NET
             this.Controls.Add(this.chkLogging);
             this.Controls.Add(this.btnOK);
             this.Controls.Add(this.btnCancel);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
             this.Name = "SetupDialogForm";
@@ -156,6 +208,8 @@ namespace m1OASYS_NET
         private Button btnOK;
         private Button btnCancel;
         private Label label1;
+        private CheckBox chkPulseTelemetry;
+        private CheckBox chkScopeSafety;
         private Label label2;
 
         
