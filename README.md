@@ -1,34 +1,147 @@
-The M1OASYS Dome Driver is an ASCOM Dome driver for Windows that provides standardized control of observatories equipped with the Elk m1 Automation System. It allows ASCOM-compatible software to open and close a roll-off roof or dome shutter, monitor motion status, and integrate roof control into fully automated imaging and observatory workflows.
+m1OASYS ASCOM Roof Driver
 
-Capabilities
+ASCOM dome/roof driver for observatories using the ELK M1 Gold and M1OASYS architecture.
 
-The driver implements the ASCOM IDomeV2 interface and supports:
+This driver provides reliable roll-off roof control, live telemetry, watchdog protection, optional Hall-effect pulse tracking, and optional hardware-based mount safety interlocks using Elk M1 automation rules.
 
-Connect and disconnect to the M1OASYS controller
-Open shutter / roof
-Close shutter / roof
-Abort motion
-Report shutter state (Open, Closed, Opening, Closing, Error)
-Report Slewing while the roof is moving
-Optional safety checks prior to motion commands
-ASCOM trace logging for troubleshooting
-Setup Dialog for communication and driver configuration
-Supported Communication Methods
+Features
+ASCOM Dome Interface
+Open roof
+Close roof
+Abort roof motion
+Real-time shutter status
+Compatible with ASCOM dome-capable applications including:
+NINA
+Voyager
+SGP
+CCD Commander
+custom automation systems
+Native Elk M1 Integration
 
-Depending on the M1OASYS configuration, the driver can communicate with the controller via:
+Communicates directly with the Elk M1/XEP over TCP/IP using the Elk ASCII protocol.
 
-Ethernet/TCP-IP
-Serial COM port
-Virtual serial-over-network connections
-ASCOM-Compatible Software
+Supports:
 
-The driver can be used with:
+Elk task activation
+status polling
+counter polling
+custom telemetry messages
+CRC framed packet handling
+Roof Telemetry
 
-N.I.N.A.
-ASCOM Device Hub
-ACP Observatory Control Software
-Sequence Generator Pro
-Any application that supports the ASCOM Dome interface
-Intended Use
+Optional Hall-effect pulse telemetry provides:
 
-The M1OASYS Dome Driver enables imaging and observatory software to control an M1OASYS-managed roll-off roof or dome using the standard ASCOM Dome interface. This allows automated opening and closing of the observatory as part of unattended imaging sequences while preserving compatibility with a wide range of astronomy applications.
+live pulse counting
+percent-open roof tracking
+motion monitoring
+calibration-based positioning
+
+Telemetry is fully optional and the driver also supports traditional limit-switch-only operation.
+
+Automatic Calibration
+
+Built-in calibration mode:
+
+automatically learns full-open pulse count
+saves calibration persistently
+survives reconnects and reboots
+supports automatic percent-open calculations
+Safety Features
+Movement Timeout Watchdog
+
+Detects:
+
+stalled motion
+failed relays
+missing limit transitions
+roof jams
+
+Automatically:
+
+aborts roof motion
+enters ASCOM error state
+reports fault condition
+Pulse Watchdog Protection
+
+When Hall telemetry is enabled:
+
+verifies pulse movement during roof motion
+detects motor stalls/slipping couplers
+faults safely if pulse motion stops unexpectedly
+Optional Mount Safety Interlock
+
+Supports hardware-based mount safety sensors through Elk rules.
+
+When enabled:
+
+roof movement is blocked unless Elk reports the mount/scope is safe
+no telescope control is performed by the driver
+client automation software remains responsible for mount parking
+
+This architecture keeps:
+
+hardware safety in Elk
+observatory sequencing in client software
+roof enforcement in the driver
+Live Status UI
+
+Integrated lightweight telemetry window displays:
+
+roof state
+percent open
+pulse count
+fault status
+reconnect status
+watchdog events
+calibration status
+
+The UI automatically opens/closes with ASCOM connection state.
+
+Supported Operating Modes
+Basic Mode
+limit switches only
+no pulse telemetry
+no scope safety sensors required
+Advanced Mode
+Hall pulse telemetry
+percent-open tracking
+watchdog protection
+mount safety interlocks
+Example Elk Features
+
+Typical Elk rule support includes:
+
+Open Roof task
+Close Roof task
+Stop Roof task
+Hall pulse counter
+Scope-safe sensor evaluation
+roof open/closed status reporting
+Architecture Philosophy
+
+The system intentionally separates responsibilities:
+
+Component	Responsibility
+Elk M1	Hardware authority and sensor evaluation
+ASCOM Driver	Roof control, telemetry, safety enforcement
+Client Software	Observatory automation and mount control
+
+This creates a robust and maintainable observatory control system.
+
+Requirements
+Windows
+ASCOM Platform
+Elk M1 with XEP Ethernet interface
+ElkRP configured automation rules
+Optional Hall-effect pulse sensor
+Optional mount-safe sensors
+
+Current project status:
+
+Core development complete
+Operational testing in progress
+Observatory deployment ready
+
+License
+
+Personal / observatory use project.
