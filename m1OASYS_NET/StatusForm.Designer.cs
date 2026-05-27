@@ -134,6 +134,7 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(200, 224);
+            this.ControlBox = false;
             this.Controls.Add(this.lblWatchdog);
             this.Controls.Add(this.lblReconnect);
             this.Controls.Add(this.lblLastFault);
@@ -147,7 +148,7 @@
             this.MaximizeBox = false;
             this.Name = "StatusForm";
             this.ShowInTaskbar = false;
-            this.Text = "StatusForm";
+            this.Text = "m1 Roof Status";
             this.TopMost = true;
             this.ResumeLayout(false);
             this.PerformLayout();
