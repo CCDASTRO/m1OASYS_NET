@@ -38,6 +38,7 @@ namespace m1OASYS_NET
 
         public static string ShutterState =
             "Unknown";
+        public static bool ScopeSafetyEnabled = false;
 
         public static bool OpenLimitActive = false;
         public static bool MountSafe = false;

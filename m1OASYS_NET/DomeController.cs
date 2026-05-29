@@ -83,6 +83,7 @@ namespace m1OASYS_NET
             stream = client.GetStream();
             usePulseTelemetry = enablePulseTelemetry;
             useScopeSafety = enableScopeSafety;
+            RoofTelemetry.ScopeSafetyEnabled = enableScopeSafety;
             running = true;
 
             rxThread = new Thread(RxLoop) { IsBackground = true };
