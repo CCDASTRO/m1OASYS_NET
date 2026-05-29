@@ -39,6 +39,7 @@
             this.lblLastFault = new System.Windows.Forms.Label();
             this.lblReconnect = new System.Windows.Forms.Label();
             this.lblWatchdog = new System.Windows.Forms.Label();
+            this.lblMountSafe = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // lblState
@@ -53,7 +54,7 @@
             // lblPercent
             // 
             this.lblPercent.AutoSize = true;
-            this.lblPercent.Location = new System.Drawing.Point(21, 150);
+            this.lblPercent.Location = new System.Drawing.Point(22, 173);
             this.lblPercent.Name = "lblPercent";
             this.lblPercent.Size = new System.Drawing.Size(44, 13);
             this.lblPercent.TabIndex = 1;
@@ -80,7 +81,7 @@
             // 
             // progressRoof
             // 
-            this.progressRoof.Location = new System.Drawing.Point(76, 150);
+            this.progressRoof.Location = new System.Drawing.Point(77, 173);
             this.progressRoof.Name = "progressRoof";
             this.progressRoof.Size = new System.Drawing.Size(100, 23);
             this.progressRoof.TabIndex = 4;
@@ -93,7 +94,7 @@
             // 
             // btnCalibrate
             // 
-            this.btnCalibrate.Location = new System.Drawing.Point(60, 189);
+            this.btnCalibrate.Location = new System.Drawing.Point(61, 212);
             this.btnCalibrate.Name = "btnCalibrate";
             this.btnCalibrate.Size = new System.Drawing.Size(75, 23);
             this.btnCalibrate.TabIndex = 5;
@@ -129,12 +130,22 @@
             this.lblWatchdog.Text = "Watchdog";
             this.lblWatchdog.Click += new System.EventHandler(this.lblWatchdog_Click);
             // 
+            // lblMountSafe
+            // 
+            this.lblMountSafe.AutoSize = true;
+            this.lblMountSafe.Location = new System.Drawing.Point(20, 146);
+            this.lblMountSafe.Name = "lblMountSafe";
+            this.lblMountSafe.Size = new System.Drawing.Size(70, 13);
+            this.lblMountSafe.TabIndex = 9;
+            this.lblMountSafe.Text = "Mount Status";
+            // 
             // StatusForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(200, 224);
+            this.ClientSize = new System.Drawing.Size(200, 247);
             this.ControlBox = false;
+            this.Controls.Add(this.lblMountSafe);
             this.Controls.Add(this.lblWatchdog);
             this.Controls.Add(this.lblReconnect);
             this.Controls.Add(this.lblLastFault);
@@ -167,5 +178,6 @@
         private System.Windows.Forms.Label lblLastFault;
         private System.Windows.Forms.Label lblReconnect;
         private System.Windows.Forms.Label lblWatchdog;
+        private System.Windows.Forms.Label lblMountSafe;
     }
 }

@@ -40,7 +40,7 @@ namespace m1OASYS_NET
             "Unknown";
 
         public static bool OpenLimitActive = false;
-        public static bool MountSafe = true;
+        public static bool MountSafe = false;
         public static bool ClosedLimitActive = false;
         public static int LastPulseCount = 0;
         // ---------------------------------

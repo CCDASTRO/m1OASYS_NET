@@ -25,7 +25,7 @@ namespace m1OASYS_NET
         private bool connected;
         
 
-        private ShutterState shutterState = ShutterState.shutterError;
+        private ShutterState shutterState = ShutterState.shutterClosed;
 
         private DateTime lastRealTelemetry = DateTime.MinValue;
 
@@ -630,7 +630,7 @@ namespace m1OASYS_NET
                             p.DeviceType = "Dome";
 
                             p.WriteValue(
-                                "m1OASYS_NET.Dome",
+                                "ASCOM.m1OASYS_NET.Dome",
                                 "OpenPulseCount",
                                 learned.ToString());
                         }

@@ -26,17 +26,16 @@ namespace m1OASYS_NET
         }
 
         private void timer1_Tick(
-     object sender,
-     EventArgs e)
+    object sender,
+    EventArgs e)
         {
-            
-                if (IsDisposed ||
-                    !Visible)
-                {
-                    return;
-                }
+            if (IsDisposed ||
+                !Visible)
+            {
+                return;
+            }
 
-                lblState.Text =
+            lblState.Text =
                 "State: " +
                 RoofTelemetry.ShutterState;
 
@@ -54,12 +53,21 @@ namespace m1OASYS_NET
                     ? RoofTelemetry.FaultMessage
                     : "None";
 
-            progressRoof.Value =
+            // ---------------------------------
+            // Progress bar safety
+            // ---------------------------------
+
+            int percent =
                 Math.Max(
                     0,
                     Math.Min(
                         100,
                         RoofTelemetry.PercentOpen));
+
+            if (progressRoof.Value != percent)
+            {
+                progressRoof.Value = percent;
+            }
 
             // ---------------------------------
             // Reconnect status
@@ -105,6 +113,18 @@ namespace m1OASYS_NET
                 );
 
             // ---------------------------------
+            // Mount safety status
+            // ---------------------------------
+
+            lblMountSafe.Text =
+                "Mount Safe: " +
+                (
+                    RoofTelemetry.MountSafe
+                        ? "YES"
+                        : "NO"
+                );
+
+            // ---------------------------------
             // Calibration complete popup
             // ---------------------------------
 
@@ -115,10 +135,12 @@ namespace m1OASYS_NET
                 calibrationShown = true;
 
                 MessageBox.Show(
-                    "Calibration Complete\n\n"
-                    + "Open Pulse Count = "
-                    + RoofTelemetry.LastCalibrationValue,
-                    "Calibration");
+                    "Calibration Complete\n\n" +
+                    "Open Pulse Count = " +
+                    RoofTelemetry.LastCalibrationValue,
+                    "Calibration",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
             }
         }
         private void btnCalibrate_Click(
@@ -138,7 +160,7 @@ namespace m1OASYS_NET
 
                 ASCOM.DriverAccess.Dome dome =
                     new ASCOM.DriverAccess.Dome(
-                        "m1OASYS_NET.Dome");
+                        "ASCOM.m1OASYS_NET.Dome");
 
                 dome.OpenShutter();
 
