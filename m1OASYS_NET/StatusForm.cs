@@ -49,9 +49,10 @@ namespace m1OASYS_NET
                 RoofTelemetry.CurrentPulseCount;
 
             lblFault.Text =
-                RoofTelemetry.Faulted
-                    ? RoofTelemetry.FaultMessage
-                    : "None";
+    RoofTelemetry.Faulted
+        ? "Fault: " +
+          RoofTelemetry.FaultMessage
+        : "Fault: None";
 
             // ---------------------------------
             // Progress bar safety
@@ -179,6 +180,18 @@ namespace m1OASYS_NET
         protected override void OnFormClosing(
     FormClosingEventArgs e)
         {
+            // User clicked taskbar X
+            if (e.CloseReason ==
+                CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+
+                this.WindowState =
+                    FormWindowState.Minimized;
+
+                return;
+            }
+
             timer1.Enabled = false;
 
             base.OnFormClosing(e);
@@ -186,6 +199,22 @@ namespace m1OASYS_NET
         private void lblWatchdog_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void StatusForm_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void lblFault_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void btnMinimize_Click(object sender, EventArgs e)
+        {
+            this.WindowState =
+                FormWindowState.Minimized;
         }
     }
 }
