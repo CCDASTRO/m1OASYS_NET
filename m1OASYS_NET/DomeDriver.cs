@@ -176,7 +176,7 @@ namespace m1OASYS_NET
                                 {
                                     try
                                     {
-                                        statusForm.Close();
+                                        statusForm.ForceClose();
                                     }
                                     catch
                                     {

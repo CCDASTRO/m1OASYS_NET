@@ -12,14 +12,18 @@ namespace m1OASYS_NET
 {
     public partial class StatusForm : Form
     {
-        
-        
+
+        private bool allowClose = false;
         private bool calibrationShown = false;
         public StatusForm()
         {
             InitializeComponent();
         }
-
+        public void ForceClose()
+        {
+            allowClose = true;
+            Close();
+        }
         private void label2_Click(object sender, EventArgs e)
         {
 
@@ -180,8 +184,8 @@ namespace m1OASYS_NET
         protected override void OnFormClosing(
     FormClosingEventArgs e)
         {
-            // User clicked taskbar X
-            if (e.CloseReason ==
+            if (!allowClose &&
+                e.CloseReason ==
                 CloseReason.UserClosing)
             {
                 e.Cancel = true;
