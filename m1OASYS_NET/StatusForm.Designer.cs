@@ -156,7 +156,6 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(280, 140);
-            this.ControlBox = false;
             this.Controls.Add(this.btnMinimize);
             this.Controls.Add(this.lblMountSafe);
             this.Controls.Add(this.lblWatchdog);
@@ -168,7 +167,7 @@
             this.Controls.Add(this.lblPulses);
             this.Controls.Add(this.lblPercent);
             this.Controls.Add(this.lblState);
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.Name = "StatusForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;

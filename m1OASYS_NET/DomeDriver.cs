@@ -3,6 +3,7 @@ using ASCOM.DeviceInterface;
 using ASCOM.Utilities;
 using System;
 using System.Collections;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
@@ -210,7 +211,18 @@ namespace m1OASYS_NET
         public string Name => "m1OASYS Dome";
         public string Description => "TCP Dome Driver";
         public string DriverInfo => "m1OASYS ASCOM Dome Driver";
-        public string DriverVersion => "1.1.10";
+        public string DriverVersion
+        {
+            get
+            {
+                Version v =
+                    Assembly.GetExecutingAssembly()
+                        .GetName()
+                        .Version;
+
+                return $"{v.Major}.{v.Minor}.{v.Build}";
+            }
+        }
         public short InterfaceVersion => 2;
 
         // ---------------- CAPABILITIES ----------------
