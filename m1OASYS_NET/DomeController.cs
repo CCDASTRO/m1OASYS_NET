@@ -576,6 +576,9 @@ namespace m1OASYS_NET
                     RoofTelemetry.ShutterState =
                         "Closed";
 
+                    RoofTelemetry.CurrentPulseCount = 0;
+                    RoofTelemetry.PercentOpen = 0;
+
                     RoofTelemetry.ClosedLimitActive =
                         true;
 
@@ -591,13 +594,20 @@ namespace m1OASYS_NET
                 }
 
                 if (msg.Contains("open") &&
-    !msg.Contains("closed"))
+                    !msg.Contains("closed"))
                 {
                     shutterState =
                         ShutterState.shutterOpen;
 
                     RoofTelemetry.ShutterState =
                         "Open";
+                    
+                    // Restore telemetry position
+                    RoofTelemetry.CurrentPulseCount =
+                        RoofTelemetry.OpenPulseCount;
+
+                    RoofTelemetry.PercentOpen =
+                        100;
 
                     RoofTelemetry.OpenLimitActive =
                         true;
@@ -622,6 +632,8 @@ namespace m1OASYS_NET
                         RoofTelemetry.OpenPulseCount = learned;
                         RoofTelemetry.LastCalibrationValue = learned;
                         RoofTelemetry.CalibrationMode = false;
+
+                        log.LogMessage("Calibration", $"Learned OpenPulseCount={learned}");
 
                         try
                         {
