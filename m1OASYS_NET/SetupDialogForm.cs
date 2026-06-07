@@ -20,6 +20,30 @@ namespace m1OASYS_NET
 
             txtIP.Text = p.GetValue(Id, "IP", "", "");
             txtPort.Text = p.GetValue(Id, "Port", "", "");
+            cboConnectionMethod.Text = p.GetValue(Id, "ConnectionMethod", "", "TCP/IP");
+
+            cboComPort.Items.Clear();
+
+            cboComPort.Items.AddRange(
+                System.IO.Ports.SerialPort.GetPortNames());
+
+            string savedPort =
+                p.GetValue(
+                    Id,
+                    "ComPort",
+                    "",
+                    "COM1");
+
+            if (cboComPort.Items.Contains(savedPort))
+            {
+                cboComPort.SelectedItem =
+                    savedPort;
+            }
+            else if (cboComPort.Items.Count > 0)
+            {
+                cboComPort.SelectedIndex = 0;
+            }
+            UpdateConnectionControls();
 
             // -----------------------------
             // Hall Pulse Telemetry option
@@ -27,24 +51,13 @@ namespace m1OASYS_NET
             bool pulseEnabled;
 
             bool.TryParse(
-                p.GetValue(
-                    Id,
-                    "UsePulseTelemetry",
-                    "",
-                    "False"),
-                out pulseEnabled);
+                p.GetValue(Id, "UsePulseTelemetry", "", "False"), out pulseEnabled);
 
             chkPulseTelemetry.Checked = pulseEnabled;
 
             bool scopeSafety;
 
-            bool.TryParse(
-                p.GetValue(
-                    Id,
-                    "UseScopeSafety",
-                    "",
-                    "False"),
-                out scopeSafety);
+            bool.TryParse(p.GetValue(Id, "UseScopeSafety", "", "False"), out scopeSafety);
 
             chkScopeSafety.Checked =
                 scopeSafety;
@@ -64,6 +77,10 @@ namespace m1OASYS_NET
         {
             Profile p = new Profile();
             p.DeviceType = "Dome";
+
+            p.WriteValue(Id, "ConnectionMethod", cboConnectionMethod.Text);
+
+            p.WriteValue(Id, "ComPort", cboComPort.Text);
 
             p.WriteValue(Id, "IP", txtIP.Text);
             p.WriteValue(Id, "Port", txtPort.Text);
@@ -90,22 +107,26 @@ namespace m1OASYS_NET
             this.chkLogging = new System.Windows.Forms.CheckBox();
             this.btnOK = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
-            this.label1 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
+            this.lblIP = new System.Windows.Forms.Label();
+            this.lblPort = new System.Windows.Forms.Label();
             this.chkPulseTelemetry = new System.Windows.Forms.CheckBox();
             this.chkScopeSafety = new System.Windows.Forms.CheckBox();
+            this.cboConnectionMethod = new System.Windows.Forms.ComboBox();
+            this.cboComPort = new System.Windows.Forms.ComboBox();
+            this.label3 = new System.Windows.Forms.Label();
+            this.lblComPort = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // txtIP
             // 
-            this.txtIP.Location = new System.Drawing.Point(61, 11);
+            this.txtIP.Location = new System.Drawing.Point(66, 64);
             this.txtIP.Name = "txtIP";
             this.txtIP.Size = new System.Drawing.Size(110, 20);
             this.txtIP.TabIndex = 2;
             // 
             // txtPort
             // 
-            this.txtPort.Location = new System.Drawing.Point(61, 37);
+            this.txtPort.Location = new System.Drawing.Point(66, 90);
             this.txtPort.Name = "txtPort";
             this.txtPort.Size = new System.Drawing.Size(110, 20);
             this.txtPort.TabIndex = 3;
@@ -113,7 +134,7 @@ namespace m1OASYS_NET
             // chkLogging
             // 
             this.chkLogging.AutoSize = true;
-            this.chkLogging.Location = new System.Drawing.Point(27, 63);
+            this.chkLogging.Location = new System.Drawing.Point(15, 116);
             this.chkLogging.Name = "chkLogging";
             this.chkLogging.Size = new System.Drawing.Size(100, 17);
             this.chkLogging.TabIndex = 5;
@@ -137,28 +158,28 @@ namespace m1OASYS_NET
             this.btnCancel.Text = "Cancel";
             this.btnCancel.Click += new System.EventHandler(this.cmdCancel_Click);
             // 
-            // label1
+            // lblIP
             // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(24, 14);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(17, 13);
-            this.label1.TabIndex = 0;
-            this.label1.Text = "IP";
+            this.lblIP.AutoSize = true;
+            this.lblIP.Location = new System.Drawing.Point(12, 67);
+            this.lblIP.Name = "lblIP";
+            this.lblIP.Size = new System.Drawing.Size(17, 13);
+            this.lblIP.TabIndex = 0;
+            this.lblIP.Text = "IP";
             // 
-            // label2
+            // lblPort
             // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(24, 40);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(26, 13);
-            this.label2.TabIndex = 1;
-            this.label2.Text = "Port";
+            this.lblPort.AutoSize = true;
+            this.lblPort.Location = new System.Drawing.Point(12, 93);
+            this.lblPort.Name = "lblPort";
+            this.lblPort.Size = new System.Drawing.Size(39, 13);
+            this.lblPort.TabIndex = 1;
+            this.lblPort.Text = "IP Port";
             // 
             // chkPulseTelemetry
             // 
             this.chkPulseTelemetry.AutoSize = true;
-            this.chkPulseTelemetry.Location = new System.Drawing.Point(151, 66);
+            this.chkPulseTelemetry.Location = new System.Drawing.Point(139, 119);
             this.chkPulseTelemetry.Name = "chkPulseTelemetry";
             this.chkPulseTelemetry.Size = new System.Drawing.Size(93, 17);
             this.chkPulseTelemetry.TabIndex = 8;
@@ -168,20 +189,64 @@ namespace m1OASYS_NET
             // chkScopeSafety
             // 
             this.chkScopeSafety.AutoSize = true;
-            this.chkScopeSafety.Location = new System.Drawing.Point(27, 86);
+            this.chkScopeSafety.Location = new System.Drawing.Point(15, 139);
             this.chkScopeSafety.Name = "chkScopeSafety";
             this.chkScopeSafety.Size = new System.Drawing.Size(161, 17);
             this.chkScopeSafety.TabIndex = 9;
             this.chkScopeSafety.Text = "Enable Mount Safety Sensor";
             this.chkScopeSafety.UseVisualStyleBackColor = true;
             // 
+            // cboConnectionMethod
+            // 
+            this.cboConnectionMethod.FormattingEnabled = true;
+            this.cboConnectionMethod.Items.AddRange(new object[] {
+            "TCP/IP",
+            "Serial"});
+            this.cboConnectionMethod.Location = new System.Drawing.Point(68, 12);
+            this.cboConnectionMethod.Name = "cboConnectionMethod";
+            this.cboConnectionMethod.Size = new System.Drawing.Size(110, 21);
+            this.cboConnectionMethod.TabIndex = 10;
+            this.cboConnectionMethod.Text = "TCP/IP";
+            this.cboConnectionMethod.SelectedIndexChanged += new System.EventHandler(this.cboConnectionMethod_SelectedIndexChanged);
+            // 
+            // cboComPort
+            // 
+            this.cboComPort.FormattingEnabled = true;
+            this.cboComPort.Location = new System.Drawing.Point(68, 37);
+            this.cboComPort.Name = "cboComPort";
+            this.cboComPort.Size = new System.Drawing.Size(110, 21);
+            this.cboComPort.TabIndex = 11;
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(13, 15);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(43, 13);
+            this.label3.TabIndex = 12;
+            this.label3.Text = "Method";
+            // 
+            // lblComPort
+            // 
+            this.lblComPort.AutoSize = true;
+            this.lblComPort.Location = new System.Drawing.Point(12, 42);
+            this.lblComPort.Name = "lblComPort";
+            this.lblComPort.Size = new System.Drawing.Size(50, 13);
+            this.lblComPort.TabIndex = 13;
+            this.lblComPort.Text = "Com Port";
+            this.lblComPort.Click += new System.EventHandler(this.label4_Click);
+            // 
             // SetupDialogForm
             // 
-            this.ClientSize = new System.Drawing.Size(261, 108);
+            this.ClientSize = new System.Drawing.Size(261, 165);
+            this.Controls.Add(this.lblComPort);
+            this.Controls.Add(this.label3);
+            this.Controls.Add(this.cboComPort);
+            this.Controls.Add(this.cboConnectionMethod);
             this.Controls.Add(this.chkScopeSafety);
             this.Controls.Add(this.chkPulseTelemetry);
-            this.Controls.Add(this.label1);
-            this.Controls.Add(this.label2);
+            this.Controls.Add(this.lblIP);
+            this.Controls.Add(this.lblPort);
             this.Controls.Add(this.txtIP);
             this.Controls.Add(this.txtPort);
             this.Controls.Add(this.chkLogging);
@@ -207,11 +272,50 @@ namespace m1OASYS_NET
         private CheckBox chkLogging;
         private Button btnOK;
         private Button btnCancel;
-        private Label label1;
+        private Label lblIP;
         private CheckBox chkPulseTelemetry;
         private CheckBox chkScopeSafety;
-        private Label label2;
+        private ComboBox cboConnectionMethod;
+        private ComboBox cboComPort;
+        private Label label3;
+        private Label lblComPort;
+        private Label lblPort;
 
-        
+        private void UpdateConnectionControls()
+        {
+            bool useSerial =
+               cboConnectionMethod.Text.Trim()
+               .StartsWith(
+               "Serial",
+               StringComparison.OrdinalIgnoreCase);
+
+            lblComPort.Enabled =
+                useSerial;
+
+            cboComPort.Enabled =
+                useSerial;
+
+            lblIP.Enabled =
+                !useSerial;
+
+            txtIP.Enabled =
+                !useSerial;
+
+            lblPort.Enabled =
+                !useSerial;
+
+            txtPort.Enabled =
+                !useSerial;
+        }
+
+        private void label4_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void cboConnectionMethod_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            UpdateConnectionControls();
+        }
     }
 }

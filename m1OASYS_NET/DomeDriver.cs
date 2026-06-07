@@ -75,52 +75,97 @@ namespace m1OASYS_NET
                         "Dome";
 
                     string ip =
+    p.GetValue(
+        ID,
+        "IP",
+        "",
+        "127.0.0.1");
+
+                    string connectionMethod =
                         p.GetValue(
                             ID,
-                            "IP",
+                            "ConnectionMethod",
                             "",
-                            "127.0.0.1");
+                            "TCP/IP");
 
-                    int port =
-                        int.Parse(
-                            p.GetValue(
-                                ID,
-                                "Port",
-                                "",
-                                "0"));
+                    int port = 0;
 
-                    bool pulseTelemetry =
-                        bool.Parse(
+                    // Only needed for TCP/IP connections
+                    if (!connectionMethod.Equals(
+                            "Serial",
+                            StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!int.TryParse(
+                                p.GetValue(
+                                    ID,
+                                    "Port",
+                                    "",
+                                    "2101"),
+                                out port))
+                        {
+                            throw new Exception(
+                                "Invalid Port setting.");
+                        }
+                    }
+
+                    string comPort =
+                        p.GetValue(
+                            ID,
+                            "ComPort",
+                            "",
+                            "COM1");
+
+                    bool pulseTelemetry;
+
+                    if (!bool.TryParse(
                             p.GetValue(
                                 ID,
                                 "UsePulseTelemetry",
                                 "",
-                                "False"));
+                                "False"),
+                            out pulseTelemetry))
+                    {
+                        pulseTelemetry = false;
+                    }
 
-                    bool scopeSafety =
-                        bool.Parse(
+                    bool scopeSafety;
+
+                    if (!bool.TryParse(
                             p.GetValue(
                                 ID,
                                 "UseScopeSafety",
                                 "",
-                                "False"));
+                                "False"),
+                            out scopeSafety))
+                    {
+                        scopeSafety = false;
+                    }
 
-                    int openPulseCount =
-                        int.Parse(
+                    int openPulseCount;
+
+                    if (!int.TryParse(
                             p.GetValue(
                                 ID,
                                 "OpenPulseCount",
                                 "",
-                                "5000"));
+                                "5000"),
+                            out openPulseCount))
+                    {
+                        openPulseCount = 5000;
+                    }
 
+                    RoofTelemetry.OpenPulseCount =
+                        openPulseCount;
                     RoofTelemetry.OpenPulseCount =
                         openPulseCount;
 
                     dome.Connect(
+                        connectionMethod,
                         ip,
-                        port,
-                        pulseTelemetry,
-                        scopeSafety);
+    port,
+    comPort,
+    pulseTelemetry,
+    scopeSafety);
 
                     connected = true;
 

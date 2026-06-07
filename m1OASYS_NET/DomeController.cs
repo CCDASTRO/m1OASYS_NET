@@ -6,6 +6,7 @@ using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.IO.Ports;
 
 namespace m1OASYS_NET
 {
@@ -21,7 +22,9 @@ namespace m1OASYS_NET
         private bool useScopeSafety;
         private readonly object ioLock = new object();
         private readonly object stateLock = new object();
+        private SerialPort serial;
 
+        private bool useSerial;
         private bool connected;
         
 
@@ -69,18 +72,58 @@ namespace m1OASYS_NET
         // CONNECT
         // =====================================================
 
-        public void Connect(string ip, int port, bool enablePulseTelemetry, bool enableScopeSafety)
+        public void Connect(
+            string connectionMethod,
+            string ip,
+            int port,
+            string comPort,
+            bool enablePulseTelemetry,
+            bool enableScopeSafety)
         {
-            
 
-            client = new TcpClient
+
+            if (connectionMethod.StartsWith(
+                "Serial",
+                StringComparison.OrdinalIgnoreCase))
             {
-                ReceiveTimeout = 3000,
-                SendTimeout = 3000
-            };
+                useSerial = true;
 
-            client.Connect(ip, port);
-            stream = client.GetStream();
+                serial = new SerialPort(
+                    comPort,
+                    9600,
+                    Parity.None,
+                    8,
+                    StopBits.One);
+
+                log.LogMessage(
+                    "Connect",
+                     $"Opening Serial Port {comPort}");
+
+                serial.Open();
+
+                log.LogMessage(
+                    "Connect",
+                    $"Serial Port {comPort} Open");
+            }
+            else
+            {
+                useSerial = false;
+
+                client = new TcpClient
+                {
+                    ReceiveTimeout = 3000,
+                    SendTimeout = 3000
+                };
+
+                client.Connect(ip, port);
+
+                stream = client.GetStream();
+
+                log.LogMessage(
+                    "Connect",
+                    $"Connected to {ip}:{port}");
+            }
+
             usePulseTelemetry = enablePulseTelemetry;
             useScopeSafety = enableScopeSafety;
             RoofTelemetry.ScopeSafetyEnabled = enableScopeSafety;
@@ -132,11 +175,22 @@ namespace m1OASYS_NET
 
             try
             {
+                serial?.Close();
+            }
+            catch
+            {
+            }
+
+            try
+            {
                 client?.Close();
             }
             catch
             {
             }
+            stream = null;
+            client = null;
+            serial = null;
 
             // ---------------------------------
             // Stop worker threads
@@ -199,7 +253,34 @@ namespace m1OASYS_NET
                 try
                 {
                     // -----------------------------
-                    // Validate connection
+                    // Serial Connection
+                    // -----------------------------
+
+                    if (useSerial)
+                    {
+                        if (serial == null ||
+                            !serial.IsOpen)
+                        {
+                            break;
+                        }
+
+                        if (serial.BytesToRead > 0)
+                        {
+                            string incoming =
+                                serial.ReadExisting();
+
+                            Process(incoming);
+                        }
+                        else
+                        {
+                            Thread.Sleep(20);
+                        }
+
+                        continue;
+                    }
+
+                    // -----------------------------
+                    // TCP Connection
                     // -----------------------------
 
                     if (client == null ||
@@ -208,10 +289,6 @@ namespace m1OASYS_NET
                     {
                         break;
                     }
-
-                    // -----------------------------
-                    // Read incoming data
-                    // -----------------------------
 
                     if (stream.DataAvailable)
                     {
@@ -226,7 +303,6 @@ namespace m1OASYS_NET
                                     buffer.Length);
                         }
 
-                        // Remote disconnect
                         if (len <= 0)
                         {
                             break;
@@ -249,12 +325,10 @@ namespace m1OASYS_NET
                 }
                 catch (ObjectDisposedException)
                 {
-                    // Expected during disconnect
                     break;
                 }
                 catch (IOException)
                 {
-                    // Socket closed
                     break;
                 }
                 catch (Exception ex)
@@ -667,17 +741,34 @@ namespace m1OASYS_NET
         {
             try
             {
-                byte[] data = Encoding.ASCII.GetBytes(Crc32.CalculateCRC(cmd));
+                byte[] data =
+                    Encoding.ASCII.GetBytes(
+                        Crc32.CalculateCRC(cmd));
 
                 lock (ioLock)
                 {
-                    stream.Write(data, 0, data.Length);
-                    stream.Flush();
+                    if (useSerial)
+                    {
+                        serial.Write(
+                            Encoding.ASCII.GetString(
+                                data));
+                    }
+                    else
+                    {
+                        stream.Write(
+                            data,
+                            0,
+                            data.Length);
+
+                        stream.Flush();
+                    }
                 }
             }
             catch (Exception ex)
             {
-                log.LogMessage("TX", ex.Message);
+                log.LogMessage(
+                    "TX",
+                    ex.Message);
             }
         }
 
