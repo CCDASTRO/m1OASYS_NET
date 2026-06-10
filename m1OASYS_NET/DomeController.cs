@@ -26,8 +26,8 @@ namespace m1OASYS_NET
 
         private bool useSerial;
         private bool connected;
-        
-
+        private volatile bool m1Responded;
+        private readonly StringBuilder rxBuffer = new StringBuilder();
         private ShutterState shutterState = ShutterState.shutterClosed;
 
         private DateTime lastRealTelemetry = DateTime.MinValue;
@@ -73,15 +73,13 @@ namespace m1OASYS_NET
         // =====================================================
 
         public void Connect(
-            string connectionMethod,
-            string ip,
-            int port,
-            string comPort,
-            bool enablePulseTelemetry,
-            bool enableScopeSafety)
+    string connectionMethod,
+    string ip,
+    int port,
+    string comPort,
+    bool enablePulseTelemetry,
+    bool enableScopeSafety)
         {
-
-
             if (connectionMethod.StartsWith(
                 "Serial",
                 StringComparison.OrdinalIgnoreCase))
@@ -97,7 +95,7 @@ namespace m1OASYS_NET
 
                 log.LogMessage(
                     "Connect",
-                     $"Opening Serial Port {comPort}");
+                    $"Opening Serial Port {comPort}");
 
                 serial.Open();
 
@@ -127,30 +125,65 @@ namespace m1OASYS_NET
             usePulseTelemetry = enablePulseTelemetry;
             useScopeSafety = enableScopeSafety;
             RoofTelemetry.ScopeSafetyEnabled = enableScopeSafety;
+
             running = true;
 
-            rxThread = new Thread(RxLoop) { IsBackground = true };
+            rxThread = new Thread(RxLoop)
+            {
+                IsBackground = true
+            };
             rxThread.Start();
 
-            verifyThread = new Thread(VerifyLoop) { IsBackground = true };
+            verifyThread = new Thread(VerifyLoop)
+            {
+                IsBackground = true
+            };
             verifyThread.Start();
+
             telemetryThread = new Thread(TelemetryLoop)
-    {
-        IsBackground = true
-    };
-
+            {
+                IsBackground = true
+            };
             telemetryThread.Start();
-            connected = true;
-            RoofTelemetry.LastReconnectTime = DateTime.Now;
-            log.LogMessage("Connect", "Connected successfully.");
 
-        // =====================================================
-        // FORCE INITIAL STATE QUERY
-        // =====================================================
+            // ============================================
+            // Wait for actual M1 traffic before connecting
+            // ============================================
+
+            m1Responded = false;
+
+            log.LogMessage(
+                "Connect",
+                "Waiting for M1 response...");
+
             Thread.Sleep(300);
-            SendRaw("xx00100");
-        }
 
+            //SendRaw("vn");
+
+            DateTime start = DateTime.Now;
+
+            while ((DateTime.Now - start).TotalSeconds < 5)
+            {
+                if (m1Responded)
+                {
+                    connected = true;
+
+                    RoofTelemetry.LastReconnectTime =
+                        DateTime.Now;
+
+                    log.LogMessage(
+                        "Connect",
+                        "Connected successfully.");
+
+                    return;
+                }
+
+                Thread.Sleep(100);
+            }
+
+            throw new Exception(
+                "No response from M1.");
+        }
         // =====================================================
         // DISCONNECT
         // =====================================================
@@ -269,7 +302,29 @@ namespace m1OASYS_NET
                             string incoming =
                                 serial.ReadExisting();
 
-                            Process(incoming);
+                            rxBuffer.Append(incoming);
+
+                            string bufferText =
+                                rxBuffer.ToString();
+
+                            int pos;
+
+                            while ((pos = bufferText.IndexOf('\r')) >= 0)
+                            {
+                                string message =
+                                    bufferText.Substring(0, pos);
+
+                                if (!string.IsNullOrWhiteSpace(message))
+                                {
+                                    Process(message);
+                                }
+
+                                bufferText =
+                                    bufferText.Substring(pos + 1);
+                            }
+
+                            rxBuffer.Clear();
+                            rxBuffer.Append(bufferText);
                         }
                         else
                         {
@@ -314,28 +369,54 @@ namespace m1OASYS_NET
                                 0,
                                 len));
 
-                        Process(sb.ToString());
+                        string bufferText =
+                            sb.ToString();
+
+                        int pos;
+
+                        while ((pos = bufferText.IndexOf('\r')) >= 0)
+                        {
+                            string message =
+                                bufferText.Substring(0, pos);
+
+                            if (!string.IsNullOrWhiteSpace(message))
+                            {
+                                Process(message);
+                            }
+
+                            bufferText =
+                                bufferText.Substring(pos + 1);
+                        }
 
                         sb.Clear();
+                        sb.Append(bufferText);
                     }
                     else
                     {
                         Thread.Sleep(20);
                     }
                 }
-                catch (ObjectDisposedException)
+                catch (ObjectDisposedException ex)
                 {
+                    log.LogMessage(
+                        "RX",
+                        ex.ToString());
+
                     break;
                 }
-                catch (IOException)
+                catch (IOException ex)
                 {
+                    log.LogMessage(
+                        "RX",
+                        ex.ToString());
+
                     break;
                 }
                 catch (Exception ex)
                 {
                     log.LogMessage(
                         "RX",
-                        ex.Message);
+                        ex.ToString());
 
                     break;
                 }
@@ -350,6 +431,7 @@ namespace m1OASYS_NET
         // VERIFY LOOP (COMMAND CONFIRMATION ONLY)
         // =====================================================
 
+        
         private void VerifyLoop()
         {
             while (running)
@@ -505,9 +587,22 @@ namespace m1OASYS_NET
             if (string.IsNullOrWhiteSpace(data))
                 return;
 
+            string upper = data.ToUpperInvariant();
+
+            if (upper.Contains("VN") ||
+                upper.Contains("XK") ||
+                upper.Contains("KC") ||
+                upper.Contains("XX") ||
+                upper.Contains("D6Z"))
+            {
+                m1Responded = true;
+            }
+
             data = data.Replace("[0D]", "\n");
 
-            var parts = data.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var parts = data.Split(
+                new[] { '\r', '\n' },
+                StringSplitOptions.RemoveEmptyEntries);
 
             foreach (var p in parts)
             {
