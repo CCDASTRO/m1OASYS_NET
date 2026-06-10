@@ -120,17 +120,31 @@ namespace m1OASYS_NET
             // ---------------------------------
             // Mount safety status
             // ---------------------------------
-            lblMountSafe.Text =
-                "Mount Safe: " +
-                (
-                    !RoofTelemetry.ScopeSafetyEnabled
-                        ? "N/A"
-                        : (
-                            RoofTelemetry.MountSafe
-                                ? "YES"
-                                : "NO"
-                          )
-                );
+            if (!RoofTelemetry.ScopeSafetyEnabled)
+            {
+                lblMountSafe.Text =
+                    "Mount Safe: N/A";
+            }
+            else
+            {
+                switch (RoofTelemetry.ScopeSafety)
+                {
+                    case ScopeSafetyState.Safe:
+                        lblMountSafe.Text =
+                            "Mount Safe: YES";
+                        break;
+
+                    case ScopeSafetyState.NotSafe:
+                        lblMountSafe.Text =
+                            "Mount Safe: NO";
+                        break;
+
+                    default:
+                        lblMountSafe.Text =
+                            "Mount Safe: UNKNOWN";
+                        break;
+                }
+            }
 
             // ---------------------------------
             // Calibration complete popup

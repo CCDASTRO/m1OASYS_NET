@@ -36,12 +36,14 @@ namespace m1OASYS_NET
 
         public static bool Moving = false;
 
-        public static string ShutterState =
-            "Unknown";
+        public static string ShutterState = "Unknown";
         public static bool ScopeSafetyEnabled = false;
 
         public static bool OpenLimitActive = false;
         public static bool MountSafe = false;
+
+        public static ScopeSafetyState ScopeSafety =
+            ScopeSafetyState.Unknown;
         public static bool ClosedLimitActive = false;
         public static int LastPulseCount = 0;
         // ---------------------------------

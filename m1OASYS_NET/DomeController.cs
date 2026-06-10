@@ -10,6 +10,14 @@ using System.IO.Ports;
 
 namespace m1OASYS_NET
 {
+
+    public enum ScopeSafetyState
+    {
+        Unknown,
+        Safe,
+        NotSafe
+    }
+
     public class DomeController
     {
         private TcpClient client;
@@ -28,9 +36,10 @@ namespace m1OASYS_NET
         private bool connected;
         private volatile bool m1Responded;
         private readonly StringBuilder rxBuffer = new StringBuilder();
-        private ShutterState shutterState = ShutterState.shutterClosed;
-
+        private ShutterState shutterState = ShutterState.shutterError;
+        private ScopeSafetyState scopeSafety = ScopeSafetyState.Unknown;
         private DateTime lastRealTelemetry = DateTime.MinValue;
+        
 
         // ---------------- VERIFY MODE ----------------
         private volatile bool verifyMode = false;
@@ -73,12 +82,14 @@ namespace m1OASYS_NET
         // =====================================================
 
         public void Connect(
-    string connectionMethod,
-    string ip,
-    int port,
-    string comPort,
-    bool enablePulseTelemetry,
-    bool enableScopeSafety)
+            string connectionMethod,
+            string ip,
+            int port,
+            string comPort,
+    
+            bool enablePulseTelemetry,
+    
+            bool enableScopeSafety)
         {
             if (connectionMethod.StartsWith(
                 "Serial",
@@ -152,13 +163,20 @@ namespace m1OASYS_NET
 
             m1Responded = false;
 
+            scopeSafety =
+                ScopeSafetyState.Unknown;
+
+            RoofTelemetry.ScopeSafety =
+                ScopeSafetyState.Unknown;  
+
+
             log.LogMessage(
                 "Connect",
                 "Waiting for M1 response...");
 
             Thread.Sleep(300);
 
-            SendRaw("vn");
+            SendRaw("vn"); 
 
             DateTime start = DateTime.Now;
 
@@ -174,7 +192,18 @@ namespace m1OASYS_NET
                     log.LogMessage(
                         "Connect",
                         "Connected successfully.");
+                    if (useScopeSafety)
+                    {
+                        SendRaw("xx005sensoron00");
 
+                        Thread.Sleep(500);
+
+                        SendRaw("xx00200");
+
+                        log.LogMessage(
+                            "ScopeSafe",
+                            "Initial safety query sent");
+                    }
                     return;
                 }
 
@@ -642,7 +671,12 @@ namespace m1OASYS_NET
             msg = msg.Trim();
             if (msg.Contains("Secure0081"))
             {
+                scopeSafety =
+                    ScopeSafetyState.Safe;
+
                 RoofTelemetry.MountSafe = true;
+                RoofTelemetry.ScopeSafety =
+                     ScopeSafetyState.Safe;
 
                 log.LogMessage(
                     "ScopeSafe",
@@ -653,7 +687,12 @@ namespace m1OASYS_NET
 
             if (msg.Contains("NotSecure"))
             {
+                scopeSafety =
+                    ScopeSafetyState.NotSafe;
+
                 RoofTelemetry.MountSafe = false;
+                RoofTelemetry.ScopeSafety =
+                     ScopeSafetyState.NotSafe;
 
                 log.LogMessage(
                     "ScopeSafe",
@@ -994,7 +1033,13 @@ namespace m1OASYS_NET
                 }
             }
         }
-
+        public ScopeSafetyState ScopeSafety
+        {
+            get
+            {
+                return scopeSafety;
+            }
+        }
         public ShutterState ShutterStatus
         {
             get
