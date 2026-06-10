@@ -158,7 +158,7 @@ namespace m1OASYS_NET
 
             Thread.Sleep(300);
 
-            //SendRaw("vn");
+            SendRaw("vn");
 
             DateTime start = DateTime.Now;
 
@@ -291,9 +291,21 @@ namespace m1OASYS_NET
 
                     if (useSerial)
                     {
-                        if (serial == null ||
-                            !serial.IsOpen)
+                        if (serial == null)
                         {
+                            log.LogMessage(
+                                "RX",
+                                "serial == null");
+
+                            break;
+                        }
+
+                        if (!serial.IsOpen)
+                        {
+                            log.LogMessage(
+                                "RX",
+                                "serial.IsOpen == false");
+
                             break;
                         }
 
@@ -301,6 +313,9 @@ namespace m1OASYS_NET
                         {
                             string incoming =
                                 serial.ReadExisting();
+                            log.LogMessage(
+                                "RXRAW",
+                                incoming);
 
                             rxBuffer.Append(incoming);
 
@@ -316,6 +331,11 @@ namespace m1OASYS_NET
 
                                 if (!string.IsNullOrWhiteSpace(message))
                                 {
+
+                                    log.LogMessage(
+                                       "RXMSG",
+                                       message);
+
                                     Process(message);
                                 }
 
