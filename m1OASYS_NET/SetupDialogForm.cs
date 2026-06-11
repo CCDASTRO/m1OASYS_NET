@@ -22,6 +22,28 @@ namespace m1OASYS_NET
             txtPort.Text = p.GetValue(Id, "Port", "", "");
             cboConnectionMethod.Text = p.GetValue(Id, "ConnectionMethod", "", "TCP/IP");
 
+            chkEnablePushover.Checked =
+                Convert.ToBoolean(
+                    p.GetValue(
+                        Id,
+                        "EnablePushover",
+                        "",
+                        "False"));
+
+            txtPushoverToken.Text =
+                p.GetValue(
+                    Id,
+                    "PushoverToken",
+                    "",
+                    "");
+
+            txtPushoverUserKey.Text =
+                p.GetValue(
+                    Id,
+                    "PushoverUserKey",
+                    "",
+                    "");
+
             cboComPort.Items.Clear();
 
             cboComPort.Items.AddRange(
@@ -88,6 +110,22 @@ namespace m1OASYS_NET
             p.WriteValue(Id, "EnableLogging", chkLogging.Checked.ToString());
             p.WriteValue(Id, "UsePulseTelemetry", chkPulseTelemetry.Checked.ToString());
             p.WriteValue(Id, "UseScopeSafety", chkScopeSafety.Checked.ToString());
+
+            p.WriteValue(
+                Id,
+                "EnablePushover",
+                chkEnablePushover.Checked.ToString());
+
+            p.WriteValue(
+                Id,
+                "PushoverToken",
+                txtPushoverToken.Text.Trim());
+
+            p.WriteValue(
+                Id,
+                "PushoverUserKey",
+                txtPushoverUserKey.Text.Trim());
+
             Close();
         }
 
@@ -115,6 +153,12 @@ namespace m1OASYS_NET
             this.cboComPort = new System.Windows.Forms.ComboBox();
             this.label3 = new System.Windows.Forms.Label();
             this.lblComPort = new System.Windows.Forms.Label();
+            this.chkEnablePushover = new System.Windows.Forms.CheckBox();
+            this.txtPushoverToken = new System.Windows.Forms.TextBox();
+            this.txtPushoverUserKey = new System.Windows.Forms.TextBox();
+            this.btnTestPushover = new System.Windows.Forms.Button();
+            this.label1 = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // txtIP
@@ -236,9 +280,67 @@ namespace m1OASYS_NET
             this.lblComPort.Text = "Com Port";
             this.lblComPort.Click += new System.EventHandler(this.label4_Click);
             // 
+            // chkEnablePushover
+            // 
+            this.chkEnablePushover.AutoSize = true;
+            this.chkEnablePushover.Location = new System.Drawing.Point(16, 162);
+            this.chkEnablePushover.Name = "chkEnablePushover";
+            this.chkEnablePushover.Size = new System.Drawing.Size(116, 17);
+            this.chkEnablePushover.TabIndex = 14;
+            this.chkEnablePushover.Text = "Enable Pusherover";
+            this.chkEnablePushover.UseVisualStyleBackColor = true;
+            // 
+            // txtPushoverToken
+            // 
+            this.txtPushoverToken.Location = new System.Drawing.Point(66, 185);
+            this.txtPushoverToken.Name = "txtPushoverToken";
+            this.txtPushoverToken.Size = new System.Drawing.Size(183, 20);
+            this.txtPushoverToken.TabIndex = 15;
+            // 
+            // txtPushoverUserKey
+            // 
+            this.txtPushoverUserKey.Location = new System.Drawing.Point(65, 211);
+            this.txtPushoverUserKey.Name = "txtPushoverUserKey";
+            this.txtPushoverUserKey.Size = new System.Drawing.Size(184, 20);
+            this.txtPushoverUserKey.TabIndex = 16;
+            // 
+            // btnTestPushover
+            // 
+            this.btnTestPushover.Location = new System.Drawing.Point(68, 248);
+            this.btnTestPushover.Name = "btnTestPushover";
+            this.btnTestPushover.Size = new System.Drawing.Size(119, 23);
+            this.btnTestPushover.TabIndex = 17;
+            this.btnTestPushover.Text = "Test Pushover";
+            this.btnTestPushover.UseVisualStyleBackColor = true;
+            this.btnTestPushover.Click += new System.EventHandler(this.btnTestPushover_Click);
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(19, 188);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(38, 13);
+            this.label1.TabIndex = 18;
+            this.label1.Text = "Token";
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(21, 214);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(25, 13);
+            this.label2.TabIndex = 19;
+            this.label2.Text = "Key";
+            // 
             // SetupDialogForm
             // 
-            this.ClientSize = new System.Drawing.Size(261, 165);
+            this.ClientSize = new System.Drawing.Size(261, 285);
+            this.Controls.Add(this.label2);
+            this.Controls.Add(this.label1);
+            this.Controls.Add(this.btnTestPushover);
+            this.Controls.Add(this.txtPushoverUserKey);
+            this.Controls.Add(this.txtPushoverToken);
+            this.Controls.Add(this.chkEnablePushover);
             this.Controls.Add(this.lblComPort);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.cboComPort);
@@ -279,6 +381,12 @@ namespace m1OASYS_NET
         private ComboBox cboComPort;
         private Label label3;
         private Label lblComPort;
+        private CheckBox chkEnablePushover;
+        private TextBox txtPushoverToken;
+        private TextBox txtPushoverUserKey;
+        private Button btnTestPushover;
+        private Label label1;
+        private Label label2;
         private Label lblPort;
 
         private void UpdateConnectionControls()
@@ -316,6 +424,23 @@ namespace m1OASYS_NET
         private void cboConnectionMethod_SelectedIndexChanged(object sender, EventArgs e)
         {
             UpdateConnectionControls();
+        }
+
+        private async void btnTestPushover_Click(
+    object sender,
+    EventArgs e)
+        {
+            
+            bool ok =
+                await PushoverNotifier.SendAsync(
+                    txtPushoverToken.Text.Trim(),
+                    txtPushoverUserKey.Text.Trim(),
+                    "m1OASYS test notification");
+
+            MessageBox.Show(
+                ok
+                    ? "Notification sent."
+                    : "Notification failed.");
         }
     }
 }

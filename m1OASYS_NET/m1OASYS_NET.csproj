@@ -80,6 +80,7 @@
     <Compile Include="DomeController.cs" />
     <Compile Include="DomeDriver.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="PushoverNotifier.cs" />
     <Compile Include="RoofTelemetry.cs" />
     <Compile Include="SetupDialogForm.cs">
       <SubType>Form</SubType>

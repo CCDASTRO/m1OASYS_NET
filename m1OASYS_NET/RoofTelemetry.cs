@@ -42,6 +42,13 @@ namespace m1OASYS_NET
         public static bool OpenLimitActive = false;
         public static bool MountSafe = false;
 
+        public static bool EnablePushover = false;
+
+        public static string PushoverToken = "";
+
+        public static string PushoverUserKey = "";
+
+
         public static ScopeSafetyState ScopeSafety =
             ScopeSafetyState.Unknown;
         public static bool ClosedLimitActive = false;

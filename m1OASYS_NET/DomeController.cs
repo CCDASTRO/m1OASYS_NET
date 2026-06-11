@@ -730,7 +730,7 @@ namespace m1OASYS_NET
                                     Math.Min(100, percent));
 
                             if (shutterState ==
-    ShutterState.shutterClosing)
+                                ShutterState.shutterClosing)
                             {
                                 RoofTelemetry.PercentOpen =
                                     100 - percent;
@@ -798,12 +798,18 @@ namespace m1OASYS_NET
 
                 if (msg.Contains("closed"))
                 {
-                    shutterState =
-                        ShutterState.shutterClosed;
+                    if (shutterState !=
+                        ShutterState.shutterClosed)
+                    {
+                        shutterState =
+                            ShutterState.shutterClosed;
 
-                    RoofTelemetry.ShutterState =
-                        "Closed";
+                        RoofTelemetry.ShutterState =
+                            "Closed";
 
+                        SendNotification(
+                            "🏠 Observatory roof closed");
+                    }
                     RoofTelemetry.CurrentPulseCount = 0;
                     RoofTelemetry.PercentOpen = 0;
 
@@ -824,12 +830,18 @@ namespace m1OASYS_NET
                 if (msg.Contains("open") &&
                     !msg.Contains("closed"))
                 {
-                    shutterState =
-                        ShutterState.shutterOpen;
+                    if (shutterState !=
+                        ShutterState.shutterOpen)
+                    {
+                        shutterState =
+                            ShutterState.shutterOpen;
 
-                    RoofTelemetry.ShutterState =
-                        "Open";
-                    
+                        RoofTelemetry.ShutterState =
+                            "Open";
+
+                        SendNotification(
+                            "🏠 Observatory roof opened");
+                    }
                     // Restore telemetry position
                     RoofTelemetry.CurrentPulseCount =
                         RoofTelemetry.OpenPulseCount;
@@ -886,7 +898,19 @@ namespace m1OASYS_NET
                 }
             }
         }
+        private async void SendNotification(
+    string message)
+        {
+            if (!RoofTelemetry.EnablePushover)
+            {
+                return;
+            }
 
+            await PushoverNotifier.SendAsync(
+                RoofTelemetry.PushoverToken,
+                RoofTelemetry.PushoverUserKey,
+                message);
+        }
         // =====================================================
         // COMMAND ENGINE
         // =====================================================
