@@ -4,6 +4,16 @@ namespace m1OASYS_NET
 {
     public static class RoofTelemetry
     {
+        //----------------------------------
+        // Pushover event tracking
+        //----------------------------------
+        public static bool NotifyRoofOpened = true;
+        public static bool NotifyRoofClosed = true;
+        public static bool NotifyRoofFault = true;
+        public static bool NotifyConnectionLost = true;
+        public static bool NotifyConnectionRestored = true;
+        public static bool NotifyScopeBlocked = true;
+
         // ---------------------------------
         // Pulse telemetry
         // ---------------------------------
@@ -49,8 +59,7 @@ namespace m1OASYS_NET
         public static string PushoverUserKey = "";
 
 
-        public static ScopeSafetyState ScopeSafety =
-            ScopeSafetyState.Unknown;
+        public static ScopeSafetyState ScopeSafety = ScopeSafetyState.Unknown;
         public static bool ClosedLimitActive = false;
         public static int LastPulseCount = 0;
         // ---------------------------------

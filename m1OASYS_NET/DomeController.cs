@@ -18,6 +18,16 @@ namespace m1OASYS_NET
         NotSafe
     }
 
+    public enum NotificationType
+    {
+        RoofOpened,
+        RoofClosed,
+        RoofFault,
+        ConnectionLost,
+        ConnectionRestored,
+        ScopeBlocked
+    }
+
     public class DomeController
     {
         private TcpClient client;
@@ -39,7 +49,9 @@ namespace m1OASYS_NET
         private ShutterState shutterState = ShutterState.shutterError;
         private ScopeSafetyState scopeSafety = ScopeSafetyState.Unknown;
         private DateTime lastRealTelemetry = DateTime.MinValue;
-        
+        private bool openNotificationSent = false;
+        private bool closedNotificationSent = false;
+        private bool connectionLostNotified = false;
 
         // ---------------- VERIFY MODE ----------------
         private volatile bool verifyMode = false;
@@ -65,6 +77,77 @@ namespace m1OASYS_NET
                 bool.TryParse(
                     p.GetValue("ASCOM.m1OASYS_NET.Dome", "EnableLogging", "", "False"),
                     out enableLogging);
+
+                RoofTelemetry.EnablePushover =
+                    Convert.ToBoolean(
+                    p.GetValue(
+                    "ASCOM.m1OASYS_NET.Dome",
+                    "EnablePushover",
+                    "",
+                    "False"));
+
+                RoofTelemetry.NotifyRoofOpened =
+                    Convert.ToBoolean(
+                        p.GetValue(
+                            "ASCOM.m1OASYS_NET.Dome",
+                            "NotifyRoofOpened",
+                            "",
+                            "True"));
+
+                RoofTelemetry.NotifyRoofClosed =
+                    Convert.ToBoolean(
+                        p.GetValue(
+                            "ASCOM.m1OASYS_NET.Dome",
+                            "NotifyRoofClosed",
+                            "",
+                            "True"));
+
+                RoofTelemetry.NotifyRoofFault =
+                    Convert.ToBoolean(
+                        p.GetValue(
+                            "ASCOM.m1OASYS_NET.Dome",
+                            "NotifyRoofFault",
+                            "",
+                            "True"));
+
+                RoofTelemetry.NotifyConnectionLost =
+                    Convert.ToBoolean(
+                        p.GetValue(
+                            "ASCOM.m1OASYS_NET.Dome",
+                            "NotifyConnectionLost",
+                            "",
+                            "True"));
+
+                RoofTelemetry.NotifyConnectionRestored =
+                    Convert.ToBoolean(
+                        p.GetValue(
+                            "ASCOM.m1OASYS_NET.Dome",
+                            "NotifyConnectionRestored",
+                            "",
+                            "True"));
+
+                RoofTelemetry.NotifyScopeBlocked =
+                    Convert.ToBoolean(
+                        p.GetValue(
+                            "ASCOM.m1OASYS_NET.Dome",
+                            "NotifyScopeBlocked",
+                            "",
+                            "True"));
+
+                RoofTelemetry.PushoverToken =
+                    p.GetValue(
+                        "ASCOM.m1OASYS_NET.Dome",
+                        "PushoverToken",
+                        "",
+                        "");
+
+                RoofTelemetry.PushoverUserKey =
+                    p.GetValue(
+                        "ASCOM.m1OASYS_NET.Dome",
+                        "PushoverUserKey",
+                        "",
+                        "");
+
             }
             catch
             {
@@ -188,6 +271,13 @@ namespace m1OASYS_NET
 
                     RoofTelemetry.LastReconnectTime =
                         DateTime.Now;
+
+                    lastRealTelemetry =
+                        DateTime.Now;
+
+                    connectionLostNotified =
+                        false;
+
 
                     log.LogMessage(
                         "Connect",
@@ -471,6 +561,15 @@ namespace m1OASYS_NET
                 }
             }
 
+            if (!connectionLostNotified)
+            {
+                connectionLostNotified = true;
+
+                SendNotification(
+                    NotificationType.ConnectionLost,
+                    "⚠ ELK communication lost");
+            }
+
             log.LogMessage(
                 "RX",
                 "RX thread exited");
@@ -511,6 +610,11 @@ namespace m1OASYS_NET
 
                         RoofTelemetry.FaultMessage =
                             "Movement timeout";
+
+                        SendNotification(
+                            NotificationType.RoofFault,
+                            "⚠ Roof fault: Movement timeout");
+
                         RoofTelemetry.LastFaultTime = DateTime.Now;
 
                         RoofTelemetry.LastWatchdogEvent =
@@ -597,6 +701,11 @@ namespace m1OASYS_NET
 
                                         RoofTelemetry.LastWatchdogEvent =
                                             "No pulse movement";
+
+                                        SendNotification(
+                                            NotificationType.RoofFault,
+                                            "⚠ Roof fault: No pulse movement");
+
                                         try
                                         {
                                             SendRaw("tn00300");
@@ -617,6 +726,33 @@ namespace m1OASYS_NET
                         }
                     }
 
+
+                    // ---------------------------------
+                    // Communication watchdog
+                    // ---------------------------------
+
+                    if (connected)
+                    {
+                        double secondsSinceTelemetry =
+                            (DateTime.Now - lastRealTelemetry)
+                            .TotalSeconds;
+
+                        if (secondsSinceTelemetry > 10)
+                        {
+                            if (!connectionLostNotified)
+                            {
+                                connectionLostNotified = true;
+
+                                SendNotification(
+                                    NotificationType.ConnectionLost,
+                                    "⚠ ELK communication lost");
+
+                                log.LogMessage(
+                                    "COMM",
+                                    "Communication lost");
+                            }
+                        }
+                    }
                     Thread.Sleep(1000);
                 }
                 catch (Exception ex)
@@ -773,6 +909,20 @@ namespace m1OASYS_NET
             lock (stateLock)
             {
                 lastRealTelemetry = DateTime.Now;
+
+                if (connectionLostNotified)
+                {
+                    connectionLostNotified = false;
+
+                    SendNotification(
+                        NotificationType.ConnectionRestored,
+                        "✅ ELK communication restored");
+
+                    log.LogMessage(
+                        "COMM",
+                        "Communication restored");
+                }
+
                 RoofTelemetry.Faulted = false;
 
                 RoofTelemetry.FaultMessage = "";
@@ -798,18 +948,22 @@ namespace m1OASYS_NET
 
                 if (msg.Contains("closed"))
                 {
-                    if (shutterState !=
-                        ShutterState.shutterClosed)
+                    shutterState =
+                        ShutterState.shutterClosed;
+
+                    RoofTelemetry.ShutterState =
+                        "Closed";
+
+                    if (!closedNotificationSent)
                     {
-                        shutterState =
-                            ShutterState.shutterClosed;
-
-                        RoofTelemetry.ShutterState =
-                            "Closed";
-
                         SendNotification(
+                            NotificationType.RoofClosed,
                             "🏠 Observatory roof closed");
+
+                        closedNotificationSent = true;
+                        openNotificationSent = false;
                     }
+
                     RoofTelemetry.CurrentPulseCount = 0;
                     RoofTelemetry.PercentOpen = 0;
 
@@ -828,20 +982,24 @@ namespace m1OASYS_NET
                 }
 
                 if (msg.Contains("open") &&
-                    !msg.Contains("closed"))
+    !msg.Contains("closed"))
                 {
-                    if (shutterState !=
-                        ShutterState.shutterOpen)
+                    shutterState =
+                        ShutterState.shutterOpen;
+
+                    RoofTelemetry.ShutterState =
+                        "Open";
+
+                    if (!openNotificationSent)
                     {
-                        shutterState =
-                            ShutterState.shutterOpen;
-
-                        RoofTelemetry.ShutterState =
-                            "Open";
-
                         SendNotification(
+                            NotificationType.RoofOpened,
                             "🏠 Observatory roof opened");
+
+                        openNotificationSent = true;
+                        closedNotificationSent = false;
                     }
+
                     // Restore telemetry position
                     RoofTelemetry.CurrentPulseCount =
                         RoofTelemetry.OpenPulseCount;
@@ -862,18 +1020,26 @@ namespace m1OASYS_NET
                     // Auto-save calibration
                     // -----------------------------
 
-                    if (usePulseTelemetry && RoofTelemetry.CalibrationMode)
+                    if (usePulseTelemetry &&
+                        RoofTelemetry.CalibrationMode)
                     {
                         int learned =
                             (int)(
                                 RoofTelemetry.CurrentPulseCount
                                 * 1.02);
 
-                        RoofTelemetry.OpenPulseCount = learned;
-                        RoofTelemetry.LastCalibrationValue = learned;
-                        RoofTelemetry.CalibrationMode = false;
+                        RoofTelemetry.OpenPulseCount =
+                            learned;
 
-                        log.LogMessage("Calibration", $"Learned OpenPulseCount={learned}");
+                        RoofTelemetry.LastCalibrationValue =
+                            learned;
+
+                        RoofTelemetry.CalibrationMode =
+                            false;
+
+                        log.LogMessage(
+                            "Calibration",
+                            $"Learned OpenPulseCount={learned}");
 
                         try
                         {
@@ -899,17 +1065,78 @@ namespace m1OASYS_NET
             }
         }
         private async void SendNotification(
+    NotificationType type,
     string message)
         {
+            log.LogMessage(
+    "Pushover",
+    $"Enable={RoofTelemetry.EnablePushover} " +
+    $"Opened={RoofTelemetry.NotifyRoofOpened} " +
+    $"Closed={RoofTelemetry.NotifyRoofClosed}");
             if (!RoofTelemetry.EnablePushover)
             {
                 return;
             }
 
-            await PushoverNotifier.SendAsync(
-                RoofTelemetry.PushoverToken,
-                RoofTelemetry.PushoverUserKey,
-                message);
+            bool enabled = false;
+
+            switch (type)
+            {
+                case NotificationType.RoofOpened:
+                    enabled =
+                        RoofTelemetry.NotifyRoofOpened;
+                    break;
+
+                case NotificationType.RoofClosed:
+                    enabled =
+                        RoofTelemetry.NotifyRoofClosed;
+                    break;
+
+                case NotificationType.RoofFault:
+                    enabled =
+                        RoofTelemetry.NotifyRoofFault;
+                    break;
+
+                case NotificationType.ConnectionLost:
+                    enabled =
+                        RoofTelemetry.NotifyConnectionLost;
+                    break;
+
+                case NotificationType.ConnectionRestored:
+                    enabled =
+                        RoofTelemetry.NotifyConnectionRestored;
+                    break;
+
+                case NotificationType.ScopeBlocked:
+                    enabled =
+                        RoofTelemetry.NotifyScopeBlocked;
+                    break;
+            }
+
+            log.LogMessage( "Pushover", $"Type={type} Enabled={enabled}");
+
+            if (!enabled)
+            {
+                return;
+            }
+
+            try
+            {
+                await PushoverNotifier.SendAsync(
+                    RoofTelemetry.PushoverToken,
+                    RoofTelemetry.PushoverUserKey,
+                    message);
+
+                log.LogMessage(
+                    "Pushover",
+                    message);
+            }
+            catch (Exception ex)
+            {
+                log.LogMessage(
+                    "Pushover",
+                    ex.Message);
+            }
         }
         // =====================================================
         // COMMAND ENGINE
@@ -987,6 +1214,10 @@ namespace m1OASYS_NET
 
                     RoofTelemetry.LastFaultTime =
                         DateTime.Now;
+
+                    SendNotification(
+                        NotificationType.ScopeBlocked,
+                        "⚠ Roof movement blocked - telescope not safe");
 
                     throw new ASCOM.InvalidOperationException(
                         "Scope not safe for roof movement");

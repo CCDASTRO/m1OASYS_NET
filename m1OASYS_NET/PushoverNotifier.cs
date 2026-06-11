@@ -36,8 +36,7 @@ namespace m1OASYS_NET
                     string result =
     await response.Content.ReadAsStringAsync();
 
-                    System.Windows.Forms.MessageBox.Show(
-                        $"HTTP {(int)response.StatusCode}\r\n\r\n{result}");
+                    //System.Windows.Forms.MessageBox.Show($"HTTP {(int)response.StatusCode}\r\n\r\n{result}");
 
                     return response.IsSuccessStatusCode;
                 }
