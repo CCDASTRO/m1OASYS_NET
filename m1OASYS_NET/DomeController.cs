@@ -52,6 +52,7 @@ namespace m1OASYS_NET
         private bool openNotificationSent = false;
         private bool closedNotificationSent = false;
         private bool connectionLostNotified = false;
+        private string lastFaultNotification = "";
 
         // ---------------- VERIFY MODE ----------------
         private volatile bool verifyMode = false;
@@ -611,9 +612,8 @@ namespace m1OASYS_NET
                         RoofTelemetry.FaultMessage =
                             "Movement timeout";
 
-                        SendNotification(
-                            NotificationType.RoofFault,
-                            "⚠ Roof fault: Movement timeout");
+                        SendFaultNotification(
+                            "Movement timeout");
 
                         RoofTelemetry.LastFaultTime = DateTime.Now;
 
@@ -733,11 +733,22 @@ namespace m1OASYS_NET
 
                     if (connected)
                     {
+                        DateTime telemetryTime;
+
+                        lock (stateLock)
+                        {
+                            telemetryTime = lastRealTelemetry;
+                        }
+
                         double secondsSinceTelemetry =
-                            (DateTime.Now - lastRealTelemetry)
+                            (DateTime.Now - telemetryTime)
                             .TotalSeconds;
 
-                        if (secondsSinceTelemetry > 10)
+                        log.LogMessage(
+                            "COMMDEBUG",
+                            $"Last={telemetryTime:HH:mm:ss.fff} Age={secondsSinceTelemetry:F1}");
+
+                        if (secondsSinceTelemetry > 20)
                         {
                             if (!connectionLostNotified)
                             {
@@ -775,12 +786,21 @@ namespace m1OASYS_NET
             string upper = data.ToUpperInvariant();
 
             if (upper.Contains("VN") ||
-                upper.Contains("XK") ||
-                upper.Contains("KC") ||
-                upper.Contains("XX") ||
-                upper.Contains("D6Z"))
+            upper.Contains("XK") ||
+            upper.Contains("KC") ||
+            upper.Contains("XX") ||
+            upper.Contains("D6Z"))
             {
                 m1Responded = true;
+
+                lock (stateLock)
+                {
+                    lastRealTelemetry = DateTime.Now;
+                }
+
+                log.LogMessage(
+                    "TELEMETRY",
+                    $"Updated {lastRealTelemetry:HH:mm:ss.fff}");
             }
 
             data = data.Replace("[0D]", "\n");
@@ -908,7 +928,7 @@ namespace m1OASYS_NET
 
             lock (stateLock)
             {
-                lastRealTelemetry = DateTime.Now;
+                
 
                 if (connectionLostNotified)
                 {
@@ -924,7 +944,7 @@ namespace m1OASYS_NET
                 }
 
                 RoofTelemetry.Faulted = false;
-
+                lastFaultNotification = "";
                 RoofTelemetry.FaultMessage = "";
 
                 // If currently opening, ignore temporary CLOSED
@@ -1064,6 +1084,18 @@ namespace m1OASYS_NET
                 }
             }
         }
+
+        private void SendFaultNotification(string faultMessage)
+        {
+            if (lastFaultNotification == faultMessage)
+                return;
+
+            lastFaultNotification = faultMessage;
+
+            SendFaultNotification(
+                RoofTelemetry.FaultMessage);
+        }
+
         private async void SendNotification(
     NotificationType type,
     string message)
