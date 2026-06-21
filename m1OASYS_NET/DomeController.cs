@@ -183,7 +183,7 @@ namespace m1OASYS_NET
 
                 serial = new SerialPort(
                     comPort,
-                    9600,
+                    115200,
                     Parity.None,
                     8,
                     StopBits.One);
