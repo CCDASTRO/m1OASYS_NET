@@ -176,15 +176,13 @@ namespace m1OASYS_NET
                     + "Ensure roof is fully closed.");
                 calibrationShown = false;
 
+                RoofTelemetry.CurrentPulseCount = 0;
+                RoofTelemetry.PercentOpen = 0;
                 RoofTelemetry.LastCalibrationValue = 0;
                 RoofTelemetry.CalibrationMode = true;
-                RoofTelemetry.CurrentPulseCount = 0;
+                
 
-                ASCOM.DriverAccess.Dome dome =
-                    new ASCOM.DriverAccess.Dome(
-                        "ASCOM.m1OASYS_NET.Dome");
-
-                dome.OpenShutter();
+                DomeDriver.Current?.OpenShutter();
 
                 MessageBox.Show(
                     "Allow roof to fully open.\n\n"

@@ -16,6 +16,7 @@ namespace m1OASYS_NET
    
     public class DomeDriver : IDomeV2
     {
+        public static DomeDriver Current { get; private set; }
 
         #region COM Registration
 
@@ -58,6 +59,12 @@ namespace m1OASYS_NET
         private bool connected;
         private StatusForm statusForm;
         private const string ID = "ASCOM.m1OASYS_NET.Dome";
+
+        public DomeDriver()
+        {
+            Current = this;
+        }
+
 
         // ---------------- ASCOM CONNECT ----------------
         public bool Connected

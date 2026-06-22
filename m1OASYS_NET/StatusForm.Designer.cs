@@ -96,7 +96,7 @@
             // 
             // btnCalibrate
             // 
-            this.btnCalibrate.Location = new System.Drawing.Point(42, 105);
+            this.btnCalibrate.Location = new System.Drawing.Point(41, 129);
             this.btnCalibrate.Name = "btnCalibrate";
             this.btnCalibrate.Size = new System.Drawing.Size(75, 23);
             this.btnCalibrate.TabIndex = 5;
@@ -116,7 +116,7 @@
             // lblReconnect
             // 
             this.lblReconnect.AutoSize = true;
-            this.lblReconnect.Location = new System.Drawing.Point(124, 75);
+            this.lblReconnect.Location = new System.Drawing.Point(9, 104);
             this.lblReconnect.Name = "lblReconnect";
             this.lblReconnect.Size = new System.Drawing.Size(60, 13);
             this.lblReconnect.TabIndex = 7;
@@ -143,7 +143,7 @@
             // 
             // btnMinimize
             // 
-            this.btnMinimize.Location = new System.Drawing.Point(159, 105);
+            this.btnMinimize.Location = new System.Drawing.Point(164, 129);
             this.btnMinimize.Name = "btnMinimize";
             this.btnMinimize.Size = new System.Drawing.Size(75, 23);
             this.btnMinimize.TabIndex = 10;
@@ -155,7 +155,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(280, 140);
+            this.ClientSize = new System.Drawing.Size(280, 173);
             this.Controls.Add(this.btnMinimize);
             this.Controls.Add(this.lblMountSafe);
             this.Controls.Add(this.lblWatchdog);

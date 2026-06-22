@@ -682,7 +682,7 @@ namespace m1OASYS_NET
                                         RoofTelemetry.LastPulseTime
                                     ).TotalSeconds;
 
-                                if (elapsed > 3)
+                                if (elapsed > 10)
                                 {
                                     lock (stateLock)
                                     {
