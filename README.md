@@ -57,11 +57,8 @@ The Elk M1 remains the authoritative hardware controller while the ASCOM driver 
 Optional Hall-effect pulse telemetry provides:
 
 * Real-time pulse counting
-* Roof position estimation
-* Percent-open calculations
 * Motion verification
 * Stall detection
-* Calibration-based positioning
 
 Pulse telemetry may be enabled or disabled from the ASCOM Setup Dialog.
 
