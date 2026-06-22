@@ -308,11 +308,11 @@ namespace m1OASYS_NET
             // chkPulseTelemetry
             // 
             this.chkPulseTelemetry.AutoSize = true;
-            this.chkPulseTelemetry.Location = new System.Drawing.Point(139, 119);
+            this.chkPulseTelemetry.Location = new System.Drawing.Point(126, 116);
             this.chkPulseTelemetry.Name = "chkPulseTelemetry";
-            this.chkPulseTelemetry.Size = new System.Drawing.Size(129, 17);
+            this.chkPulseTelemetry.Size = new System.Drawing.Size(130, 17);
             this.chkPulseTelemetry.TabIndex = 8;
-            this.chkPulseTelemetry.Text = "Enable Hall Telemetry";
+            this.chkPulseTelemetry.Text = "Enable Motion Sensor";
             this.chkPulseTelemetry.UseVisualStyleBackColor = true;
             // 
             // chkScopeSafety

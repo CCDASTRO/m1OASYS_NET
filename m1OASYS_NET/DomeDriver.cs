@@ -148,31 +148,14 @@ namespace m1OASYS_NET
                         scopeSafety = false;
                     }
 
-                    int openPulseCount;
-
-                    if (!int.TryParse(
-                            p.GetValue(
-                                ID,
-                                "OpenPulseCount",
-                                "",
-                                "5000"),
-                            out openPulseCount))
-                    {
-                        openPulseCount = 5000;
-                    }
-
-                    RoofTelemetry.OpenPulseCount =
-                        openPulseCount;
-                    RoofTelemetry.OpenPulseCount =
-                        openPulseCount;
-
+                                        
                     dome.Connect(
                         connectionMethod,
                         ip,
-    port,
-    comPort,
-    pulseTelemetry,
-    scopeSafety);
+                        port,
+                        comPort,
+                        pulseTelemetry,
+                        scopeSafety);
 
                     connected = true;
 

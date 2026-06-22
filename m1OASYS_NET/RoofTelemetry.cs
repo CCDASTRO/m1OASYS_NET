@@ -19,10 +19,7 @@ namespace m1OASYS_NET
         // ---------------------------------
 
         public static int CurrentPulseCount = 0;
-        public static bool CalibrationMode = false;
-        public static int OpenPulseCount = 5000;
-        public static int LastCalibrationValue = 0;
-        public static int PercentOpen = 0;
+        
         public static DateTime LastFaultTime = DateTime.MinValue;
 
         public static DateTime LastReconnectTime =

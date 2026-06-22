@@ -43,37 +43,13 @@ namespace m1OASYS_NET
                 "State: " +
                 RoofTelemetry.ShutterState;
 
-            lblPercent.Text =
-                "Open: " +
-                RoofTelemetry.PercentOpen +
-                "%";
-
-            lblPulses.Text =
-                "Pulses: " +
-                RoofTelemetry.CurrentPulseCount;
-
             lblFault.Text =
     RoofTelemetry.Faulted
         ? "Fault: " +
           RoofTelemetry.FaultMessage
         : "Fault: None";
 
-            // ---------------------------------
-            // Progress bar safety
-            // ---------------------------------
-
-            int percent =
-                Math.Max(
-                    0,
-                    Math.Min(
-                        100,
-                        RoofTelemetry.PercentOpen));
-
-            if (progressRoof.Value != percent)
-            {
-                progressRoof.Value = percent;
-            }
-
+            
             // ---------------------------------
             // Reconnect status
             // ---------------------------------
@@ -146,53 +122,9 @@ namespace m1OASYS_NET
                 }
             }
 
-            // ---------------------------------
-            // Calibration complete popup
-            // ---------------------------------
-
-            if (!RoofTelemetry.CalibrationMode &&
-                RoofTelemetry.LastCalibrationValue > 0 &&
-                !calibrationShown)
-            {
-                calibrationShown = true;
-
-                MessageBox.Show(
-                    "Calibration Complete\n\n" +
-                    "Open Pulse Count = " +
-                    RoofTelemetry.LastCalibrationValue,
-                    "Calibration",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-            }
+            
         }
-        private void btnCalibrate_Click(
-    object sender,
-    EventArgs e)
-        {
-            try
-            {
-                MessageBox.Show(
-                    "Calibration will begin.\n\n"
-                    + "Ensure roof is fully closed.");
-                calibrationShown = false;
-
-                RoofTelemetry.CurrentPulseCount = 0;
-                RoofTelemetry.PercentOpen = 0;
-                RoofTelemetry.LastCalibrationValue = 0;
-                RoofTelemetry.CalibrationMode = true;
-                
-
-                DomeDriver.Current?.OpenShutter();
-
-                MessageBox.Show(
-                    "Allow roof to fully open.\n\n"
-                    + "Calibration will complete automatically.");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
-            }
-        }
+       
         protected override void OnFormClosing(
     FormClosingEventArgs e)
         {
@@ -231,6 +163,11 @@ namespace m1OASYS_NET
         {
             this.WindowState =
                 FormWindowState.Minimized;
+        }
+
+        private void lblPulses_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

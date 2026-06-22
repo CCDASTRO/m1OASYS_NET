@@ -872,35 +872,10 @@ namespace m1OASYS_NET
                         RoofTelemetry.LastPulseTime =
                             DateTime.Now;
 
-                        if (RoofTelemetry.OpenPulseCount > 0)
-                        {
-                            int percent =
-                                (int)(
-                                    (double)count /
-                                    RoofTelemetry.OpenPulseCount
-                                    * 100.0);
-
-                            percent =
-                                Math.Max(
-                                    0,
-                                    Math.Min(100, percent));
-
-                            if (shutterState ==
-                                ShutterState.shutterClosing)
-                            {
-                                RoofTelemetry.PercentOpen =
-                                    100 - percent;
-                            }
-                            else
-                            {
-                                RoofTelemetry.PercentOpen =
-                                    percent;
-                            }
-                        }
 
                         log.LogMessage(
-                            "PULSE_COUNT",
-                            count.ToString());
+                            "MOTION",
+                            $"Pulse detected ({count})");
                     }
                 }
                 catch (Exception ex)
@@ -984,9 +959,7 @@ namespace m1OASYS_NET
                         openNotificationSent = false;
                     }
 
-                    RoofTelemetry.CurrentPulseCount = 0;
-                    RoofTelemetry.PercentOpen = 0;
-
+                    
                     RoofTelemetry.ClosedLimitActive =
                         true;
 
@@ -1021,11 +994,7 @@ namespace m1OASYS_NET
                     }
 
                     // Restore telemetry position
-                    RoofTelemetry.CurrentPulseCount =
-                        RoofTelemetry.OpenPulseCount;
-
-                    RoofTelemetry.PercentOpen =
-                        100;
+                    
 
                     RoofTelemetry.OpenLimitActive =
                         true;
@@ -1040,44 +1009,7 @@ namespace m1OASYS_NET
                     // Auto-save calibration
                     // -----------------------------
 
-                    if (usePulseTelemetry &&
-                        RoofTelemetry.CalibrationMode)
-                    {
-                        int learned =
-                            (int)(
-                                RoofTelemetry.CurrentPulseCount
-                                * 1.02);
-
-                        RoofTelemetry.OpenPulseCount =
-                            learned;
-
-                        RoofTelemetry.LastCalibrationValue =
-                            learned;
-
-                        RoofTelemetry.CalibrationMode =
-                            false;
-
-                        log.LogMessage(
-                            "Calibration",
-                            $"Learned OpenPulseCount={learned}");
-
-                        try
-                        {
-                            Profile p =
-                                new Profile();
-
-                            p.DeviceType = "Dome";
-
-                            p.WriteValue(
-                                "ASCOM.m1OASYS_NET.Dome",
-                                "OpenPulseCount",
-                                learned.ToString());
-                        }
-                        catch
-                        {
-                        }
-                    }
-
+                    
                     verifyMode = false;
 
                     return;
