@@ -299,9 +299,12 @@ namespace m1OASYS_NET
         public ArrayList SupportedActions => new ArrayList();
 
         // ---------------- COMMAND INTERFACE ----------------
-        public void CommandBlind(string Command, bool Raw) { }
-        public bool CommandBool(string Command, bool Raw) => false;
-        public string CommandString(string Command, bool Raw) => "";
+        public void CommandBlind(string Command, bool Raw) =>
+            throw new MethodNotImplementedException("CommandBlind");
+        public bool CommandBool(string Command, bool Raw) =>
+            throw new MethodNotImplementedException("CommandBool");
+        public string CommandString(string Command, bool Raw) =>
+            throw new MethodNotImplementedException("CommandString");
 
         // ---------------- MOTION ----------------
         public void FindHome() => throw new MethodNotImplementedException();

@@ -566,6 +566,9 @@ namespace m1OASYS_NET
 
             if (running && !connectionLostNotified)
             {
+                // The transport has ended, so do not report a stale ASCOM
+                // Connected state while the caller still holds this instance.
+                connected = false;
                 connectionLostNotified = true;
 
                 SendNotification(
@@ -826,8 +829,8 @@ namespace m1OASYS_NET
             if (string.IsNullOrWhiteSpace(msg))
                 return;
 
-            msg = msg.Trim();
-            if (msg.Contains("Secure0081"))
+            msg = msg.Trim().ToUpperInvariant();
+            if (msg.Contains("SECURE0081"))
             {
                 scopeSafety =
                     ScopeSafetyState.Safe;
@@ -845,7 +848,7 @@ namespace m1OASYS_NET
                 return;
             }
 
-            if (msg.Contains("NotSecure"))
+            if (msg.Contains("NOTSECURE"))
             {
                 scopeSafety =
                     ScopeSafetyState.NotSafe;
@@ -931,7 +934,7 @@ namespace m1OASYS_NET
                 // If currently opening, ignore temporary CLOSED
                 if (verifyMode &&
                     shutterState == ShutterState.shutterOpening &&
-                    msg.Contains("closed"))
+                    msg.Contains("CLOSED"))
                 {
                     log.LogMessage("VERIFY", "Ignoring temporary CLOSED during OPEN verify");
                     return;
@@ -940,14 +943,14 @@ namespace m1OASYS_NET
                 // If currently closing, ignore temporary OPEN
                 if (verifyMode &&
                     shutterState == ShutterState.shutterClosing &&
-                    msg.Contains("open") &&
-                    !msg.Contains("closed"))
+                    msg.Contains("OPEN") &&
+                    !msg.Contains("CLOSED"))
                 {
                     log.LogMessage("VERIFY", "Ignoring temporary OPEN during CLOSE verify");
                     return;
                 }
 
-                if (msg.Contains("closed"))
+                if (msg.Contains("CLOSED"))
                 {
                     shutterState =
                         ShutterState.shutterClosed;
@@ -980,8 +983,8 @@ namespace m1OASYS_NET
                     return;
                 }
 
-                if (msg.Contains("open") &&
-    !msg.Contains("closed"))
+                if (msg.Contains("OPEN") &&
+                    !msg.Contains("CLOSED"))
                 {
                     shutterState =
                         ShutterState.shutterOpen;
@@ -1113,7 +1116,7 @@ namespace m1OASYS_NET
         // COMMAND ENGINE
         // =====================================================
 
-        private void SendRaw(string cmd)
+        private bool SendRaw(string cmd)
         {
             try
             {
@@ -1139,12 +1142,17 @@ namespace m1OASYS_NET
                         stream.Flush();
                     }
                 }
+
+                return true;
             }
             catch (Exception ex)
             {
+                connected = false;
                 log.LogMessage(
                     "TX",
                     ex.Message);
+
+                return false;
             }
         }
 
@@ -1213,7 +1221,9 @@ namespace m1OASYS_NET
 
             if (cmd == "tn00300")
             {
-                SendRaw(cmd);
+                if (!SendRaw(cmd))
+                    throw new ASCOM.NotConnectedException(
+                        "The dome controller could not send the abort command.");
 
                 lock (stateLock)
                 {
@@ -1261,7 +1271,19 @@ namespace m1OASYS_NET
                 verifyStart = DateTime.Now;
             }
 
-            SendRaw(cmd);
+            if (!SendRaw(cmd))
+            {
+                lock (stateLock)
+                {
+                    shutterState = ShutterState.shutterError;
+                    RoofTelemetry.ShutterState = "Communication error";
+                    RoofTelemetry.Moving = false;
+                    verifyMode = false;
+                }
+
+                throw new ASCOM.NotConnectedException(
+                    "The dome controller could not send the roof command.");
+            }
         }
 
         // =====================================================
