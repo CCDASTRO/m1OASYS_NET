@@ -69,14 +69,17 @@ namespace m1OASYS_NET
         // ---------------- ASCOM CONNECT ----------------
         public bool Connected
         {
-            get => connected;
+            get => connected && dome.IsConnected;
 
             set
             {
                 if (value)
                 {
-                    Profile p =
-                        new Profile();
+                    if (Connected)
+                        return;
+
+                    using (Profile p = new Profile())
+                    {
 
                     p.DeviceType =
                         "Dome";
@@ -157,6 +160,8 @@ namespace m1OASYS_NET
                         pulseTelemetry,
                         scopeSafety);
 
+                    }
+
                     connected = true;
 
                     // ---------------------------------
@@ -187,6 +192,9 @@ namespace m1OASYS_NET
                 }
                 else
                 {
+                    if (!connected && !dome.IsConnected)
+                        return;
+
                     // ---------------------------------
                     // Stop dome controller first
                     // ---------------------------------
@@ -307,6 +315,7 @@ namespace m1OASYS_NET
         public void Dispose()
         {
             dome.Disconnect();
+            connected = false;
         }
     }
 }

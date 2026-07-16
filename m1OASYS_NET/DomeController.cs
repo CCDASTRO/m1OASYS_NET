@@ -40,6 +40,8 @@ namespace m1OASYS_NET
         private bool useScopeSafety;
         private readonly object ioLock = new object();
         private readonly object stateLock = new object();
+        private readonly ManualResetEventSlim scopeSafetyResponse =
+            new ManualResetEventSlim(false);
         private SerialPort serial;
 
         private bool useSerial;
@@ -175,6 +177,17 @@ namespace m1OASYS_NET
     
             bool enableScopeSafety)
         {
+            Disconnect();
+
+            m1Responded = false;
+            scopeSafety = ScopeSafetyState.Unknown;
+            RoofTelemetry.ScopeSafety = ScopeSafetyState.Unknown;
+            RoofTelemetry.MountSafe = false;
+
+            usePulseTelemetry = enablePulseTelemetry;
+            useScopeSafety = enableScopeSafety;
+            RoofTelemetry.ScopeSafetyEnabled = enableScopeSafety;
+
             if (connectionMethod.StartsWith(
                 "Serial",
                 StringComparison.OrdinalIgnoreCase))
@@ -217,10 +230,6 @@ namespace m1OASYS_NET
                     $"Connected to {ip}:{port}");
             }
 
-            usePulseTelemetry = enablePulseTelemetry;
-            useScopeSafety = enableScopeSafety;
-            RoofTelemetry.ScopeSafetyEnabled = enableScopeSafety;
-
             running = true;
 
             rxThread = new Thread(RxLoop)
@@ -244,15 +253,6 @@ namespace m1OASYS_NET
             // ============================================
             // Wait for actual M1 traffic before connecting
             // ============================================
-
-            m1Responded = false;
-
-            scopeSafety =
-                ScopeSafetyState.Unknown;
-
-            RoofTelemetry.ScopeSafety =
-                ScopeSafetyState.Unknown;  
-
 
             log.LogMessage(
                 "Connect",
@@ -300,6 +300,8 @@ namespace m1OASYS_NET
 
                 Thread.Sleep(100);
             }
+
+            Disconnect();
 
             throw new Exception(
                 "No response from M1.");
@@ -562,7 +564,7 @@ namespace m1OASYS_NET
                 }
             }
 
-            if (!connectionLostNotified)
+            if (running && !connectionLostNotified)
             {
                 connectionLostNotified = true;
 
@@ -834,6 +836,8 @@ namespace m1OASYS_NET
                 RoofTelemetry.ScopeSafety =
                      ScopeSafetyState.Safe;
 
+                scopeSafetyResponse.Set();
+
                 log.LogMessage(
                     "ScopeSafe",
                     "SAFE");
@@ -849,6 +853,8 @@ namespace m1OASYS_NET
                 RoofTelemetry.MountSafe = false;
                 RoofTelemetry.ScopeSafety =
                      ScopeSafetyState.NotSafe;
+
+                scopeSafetyResponse.Set();
 
                 log.LogMessage(
                     "ScopeSafe",
@@ -1024,8 +1030,9 @@ namespace m1OASYS_NET
 
             lastFaultNotification = faultMessage;
 
-            SendFaultNotification(
-                RoofTelemetry.FaultMessage);
+            SendNotification(
+                NotificationType.RoofFault,
+                $"⚠ Roof fault: {faultMessage}");
         }
 
         private async void SendNotification(
@@ -1151,6 +1158,12 @@ namespace m1OASYS_NET
 
         private void ExecuteCommand(string cmd)
         {
+            if (!connected)
+            {
+                throw new ASCOM.NotConnectedException(
+                    "The dome controller is not connected.");
+            }
+
             // ---------------------------------
             // Optional scope safety enforcement
             // ---------------------------------
@@ -1161,20 +1174,29 @@ namespace m1OASYS_NET
                     cmd == "tn00200"
                 ))
             {
+                scopeSafetyResponse.Reset();
+                scopeSafety = ScopeSafetyState.Unknown;
+                RoofTelemetry.ScopeSafety = ScopeSafetyState.Unknown;
+                RoofTelemetry.MountSafe = false;
+
                 SendRaw("xx005sensoron00");
 
                 Thread.Sleep(1000);
 
                 SendRaw("xx00200");
 
-                Thread.Sleep(1000);
+                bool receivedSafetyState =
+                    scopeSafetyResponse.Wait(2000);
 
-                if (!RoofTelemetry.MountSafe)
+                if (!receivedSafetyState ||
+                    scopeSafety != ScopeSafetyState.Safe)
                 {
                     RoofTelemetry.Faulted = true;
 
                     RoofTelemetry.FaultMessage =
-                        "Scope not safe";
+                        receivedSafetyState
+                            ? "Scope not safe"
+                            : "Scope safety status unavailable";
 
                     RoofTelemetry.LastFaultTime =
                         DateTime.Now;
@@ -1184,8 +1206,24 @@ namespace m1OASYS_NET
                         "⚠ Roof movement blocked - telescope not safe");
 
                     throw new ASCOM.InvalidOperationException(
-                        "Scope not safe for roof movement");
+                        RoofTelemetry.FaultMessage +
+                        "; roof movement blocked");
                 }
+            }
+
+            if (cmd == "tn00300")
+            {
+                SendRaw(cmd);
+
+                lock (stateLock)
+                {
+                    shutterState = ShutterState.shutterError;
+                    RoofTelemetry.ShutterState = "Stopped";
+                    RoofTelemetry.Moving = false;
+                    verifyMode = false;
+                }
+
+                return;
             }
 
             lock (stateLock)
@@ -1216,14 +1254,6 @@ namespace m1OASYS_NET
 
                     RoofTelemetry.MotionStartTime =
                         DateTime.Now;
-                }
-
-                if (cmd == "tn00300")
-                {
-                    RoofTelemetry.ShutterState =
-                        "Stopped";
-
-                    RoofTelemetry.Moving = false;
                 }
 
                 verifyMode = true;
